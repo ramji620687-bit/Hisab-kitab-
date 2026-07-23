@@ -123,6 +123,47 @@ ul{list-style:none;margin:0;padding:0;}
 .screen.active{display:flex;}
 .app-shell{min-height:100dvh;}
 
+/* ---------- Desktop / large-screen optimization ---------- */
+@media (min-width: 860px){
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, var(--md-primary-container) 0%, transparent 60%),
+      var(--md-surface-container-low);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 24px;
+  }
+  .screen{
+    max-width:600px;
+    width:100%;
+    min-height:calc(100dvh - 64px);
+    border-radius:28px;
+    box-shadow:0 8px 24px rgba(20,20,40,.10), 0 2px 8px rgba(20,20,40,.08);
+    overflow:hidden;
+  }
+  .app-shell{
+    max-width:600px;
+    width:100%;
+    margin:0 auto;
+    min-height:calc(100dvh - 64px);
+  }
+  .topbar{border-radius:28px 28px 0 0;}
+  .bottom-nav{border-radius:0 0 28px 28px;padding-bottom:12px;}
+  .nav-item{cursor:pointer;transition:background .15s,color .15s;}
+  .nav-item:hover{background:var(--md-surface-container-high);}
+  .settings-item:hover, .icon-btn:hover, .key:hover{cursor:pointer;}
+  .key:hover{background:var(--md-primary-container);border-color:var(--md-primary);}
+  .btn:hover, .btn-google:hover{filter:brightness(1.03);}
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:8px;}
+}
+
+@media (min-width: 1200px){
+  .screen{max-width:680px;}
+  .app-shell{max-width:680px;}
+}
+
 .scroll-area{
   flex:1;
   overflow-y:auto;
@@ -567,9 +608,13 @@ ul{list-style:none;margin:0;padding:0;}
         </svg>
         <span id="googleBtnLabel">Continue with Google</span>
       </button>
+      <button class="btn-google" id="btnEmailSignIn" type="button" style="margin-top:10px;">
+        <span style="font-size:16px;">✉️</span>
+        <span>Continue with Email</span>
+      </button>
       <p class="hint" id="googleUserHint" style="min-height:0"></p>
 
-      <p class="footnote">© 2026 Pump Hisab App · Offline-first, with optional Google cloud backup</p>
+      <p class="footnote">© 2026 Pump Hisab App · Offline-first, with optional cloud backup</p>
     </div>
   </div>
 </section>
@@ -1039,6 +1084,7 @@ ul{list-style:none;margin:0;padding:0;}
       <ul class="settings-list">
         <li class="settings-item" id="stgChangePin"><span class="si-icon">🔒</span><span class="si-label">Change PIN</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgGoogleAccount"><span class="si-icon">👤</span><span class="si-label" id="stgGoogleLabel">Sign in with Google</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgEmailAccount" hidden><span class="si-icon">✉️</span><span class="si-label">Sign in with Email</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgInstallApp"><span class="si-icon">⬇️</span><span class="si-label">Install App</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgBackup"><span class="si-icon">☁️</span><span class="si-label">Backup Data (file)</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgRestore"><span class="si-icon">🔄</span><span class="si-label">Restore Data (file)</span><span class="si-arrow">›</span></li>
@@ -1090,9 +1136,26 @@ ul{list-style:none;margin:0;padding:0;}
     </div>
   </div>
 
+  <div class="modal" id="modalEmailAuth" hidden>
+    <h3 id="emailAuthTitle">Sign in with Email</h3>
+    <label class="field"><span>Email</span><input type="email" id="emailAuthEmail" autocomplete="email" placeholder="you@example.com"></label>
+    <label class="field"><span>Password</span><input type="password" id="emailAuthPassword" autocomplete="current-password" placeholder="At least 6 characters"></label>
+    <p class="pin-error" id="emailAuthError" aria-live="polite" style="min-height:16px;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" id="btnEmailAuthSubmit">Sign In</button>
+    </div>
+    <p class="hint" style="margin-top:14px;">
+      <a href="#" id="emailAuthToggleMode">New here? Create an account</a>
+    </p>
+    <p class="hint">
+      <a href="#" id="emailAuthForgotPw">Forgot password?</a>
+    </p>
+  </div>
+
   <div class="modal" id="modalAbout" hidden>
     <h3>Pump Hisab App</h3>
-    <p class="muted">Version 1.0.0 — Offline-first daily accounting for petrol pumps. All data is stored locally on this device using LocalStorage; nothing is sent to a server.</p>
+    <p class="muted">Version 1.0.0 — Offline-first daily accounting for petrol pumps. Data is always stored locally on this device. If you sign in with Google or Email, your data is also securely backed up to your account in the cloud.</p>
     <div class="modal-actions"><button class="btn btn-primary" data-close>Close</button></div>
   </div>
 
@@ -1194,14 +1257,112 @@ function signOutGoogle(){
 function updateGoogleUI(){
   const label = document.getElementById('stgGoogleLabel');
   const btnHint = document.getElementById('googleUserHint');
+  const emailRow = document.getElementById('stgEmailAccount');
   if(currentUser){
     if(label) label.textContent = 'Signed in as ' + (currentUser.displayName || currentUser.email);
     if(btnHint) btnHint.textContent = '';
+    if(emailRow) emailRow.hidden = true;
   } else {
     if(label) label.textContent = 'Sign in with Google';
     if(btnHint) btnHint.textContent = '';
+    if(emailRow) emailRow.hidden = false;
   }
 }
+
+/* ---------------- Email / Password auth ---------------- */
+let emailAuthMode = 'signin'; // 'signin' | 'signup'
+
+function openEmailAuthModal(){
+  if(!firebaseReady){
+    showSnackbar('Firebase not set up yet. Add your firebaseConfig in the code first.');
+    return;
+  }
+  emailAuthMode = 'signin';
+  document.getElementById('emailAuthEmail').value = '';
+  document.getElementById('emailAuthPassword').value = '';
+  document.getElementById('emailAuthError').textContent = '';
+  updateEmailAuthModalUI();
+  openModal('modalEmailAuth');
+}
+
+function updateEmailAuthModalUI(){
+  const title = document.getElementById('emailAuthTitle');
+  const submit = document.getElementById('btnEmailAuthSubmit');
+  const toggle = document.getElementById('emailAuthToggleMode');
+  if(emailAuthMode === 'signin'){
+    title.textContent = 'Sign in with Email';
+    submit.textContent = 'Sign In';
+    toggle.textContent = 'New here? Create an account';
+  } else {
+    title.textContent = 'Create Account';
+    submit.textContent = 'Create Account';
+    toggle.textContent = 'Already have an account? Sign in';
+  }
+}
+
+document.getElementById('emailAuthToggleMode').addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  emailAuthMode = (emailAuthMode === 'signin') ? 'signup' : 'signin';
+  document.getElementById('emailAuthError').textContent = '';
+  updateEmailAuthModalUI();
+});
+
+document.getElementById('emailAuthForgotPw').addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  const email = document.getElementById('emailAuthEmail').value.trim();
+  const errEl = document.getElementById('emailAuthError');
+  if(!email){ errEl.textContent = 'Enter your email above first, then tap "Forgot password?" again.'; return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(()=>{ errEl.style.color = 'var(--md-secondary)'; errEl.textContent = 'Reset link sent — check your inbox.'; })
+    .catch((err)=>{ errEl.style.color = ''; errEl.textContent = friendlyAuthError(err); });
+});
+
+function friendlyAuthError(err){
+  const map = {
+    'auth/invalid-email':'That email address looks invalid.',
+    'auth/user-not-found':'No account found with that email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/email-already-in-use':'An account with that email already exists — try signing in instead.',
+    'auth/weak-password':'Password should be at least 6 characters.',
+    'auth/invalid-credential':'Incorrect email or password.',
+    'auth/too-many-requests':'Too many attempts — please wait a bit and try again.'
+  };
+  return map[err.code] || (err.message || 'Something went wrong. Please try again.');
+}
+
+document.getElementById('btnEmailAuthSubmit').addEventListener('click', async ()=>{
+  const email = document.getElementById('emailAuthEmail').value.trim();
+  const password = document.getElementById('emailAuthPassword').value;
+  const errEl = document.getElementById('emailAuthError');
+  errEl.style.color = '';
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Please enter both email and password.'; return; }
+  const btn = document.getElementById('btnEmailAuthSubmit');
+  btn.disabled = true;
+  try{
+    let result;
+    if(emailAuthMode === 'signin'){
+      result = await fbAuth.signInWithEmailAndPassword(email, password);
+    } else {
+      result = await fbAuth.createUserWithEmailAndPassword(email, password);
+    }
+    currentUser = result.user;
+    updateGoogleUI();
+    closeModal();
+    showSnackbar((emailAuthMode === 'signin' ? 'Signed in as ' : 'Account created — signed in as ') + currentUser.email);
+    if(!DATA.pin){
+      const pulled = await pullFromCloud(true);
+      if(!pulled){
+        showSnackbar('No cloud backup found — set a new PIN to get started.');
+      }
+    }
+  }catch(err){
+    console.error(err);
+    errEl.textContent = friendlyAuthError(err);
+  }finally{
+    btn.disabled = false;
+  }
+});
 
 function cloudDocRef(){
   if(!firebaseReady || !currentUser) return null;
@@ -2361,12 +2522,20 @@ document.getElementById('stgLogout').addEventListener('click', ()=>{
    Google login + cloud backup — event wiring
    ============================================================== */
 document.getElementById('btnGoogleSignIn').addEventListener('click', signInWithGoogle);
+document.getElementById('btnEmailSignIn').addEventListener('click', openEmailAuthModal);
 
 document.getElementById('stgGoogleAccount').addEventListener('click', ()=>{
   if(currentUser){
-    askConfirm('Sign out of Google?', 'Cloud auto-backup will stop until you sign in again.', signOutGoogle);
+    askConfirm('Sign out?', 'Cloud auto-backup will stop until you sign in again.', signOutGoogle);
   } else {
     signInWithGoogle();
+  }
+});
+document.getElementById('stgEmailAccount').addEventListener('click', ()=>{
+  if(currentUser){
+    askConfirm('Sign out?', 'Cloud auto-backup will stop until you sign in again.', signOutGoogle);
+  } else {
+    openEmailAuthModal();
   }
 });
 
