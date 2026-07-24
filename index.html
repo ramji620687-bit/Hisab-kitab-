@@ -205,14 +205,18 @@ ul{list-style:none;margin:0;padding:0;}
 .btn-ghost{background:transparent;color:var(--md-primary);}
 
 /* ---------- Login ---------- */
+.login-layout{display:flex;flex-direction:column;flex:1;min-height:100%;}
+.login-hero{display:none;}
 .login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;}
 .login-card{width:100%;max-width:360px;text-align:center;}
 .brand-mark{
   width:72px;height:72px;border-radius:24px;margin:0 auto 16px;
-  background:var(--md-primary-container);color:var(--md-primary-dark);
+  background:linear-gradient(155deg, var(--md-primary-container) 0%, var(--md-surface-container-high) 100%);
+  color:var(--md-primary-dark);
   display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 16px rgba(20,20,60,.10);
 }
-.login-card h1{margin:0 0 4px;font-size:28px;font-weight:900;color:var(--md-primary-dark);}
+.login-card h1{margin:0 0 4px;font-size:28px;font-weight:900;color:var(--md-primary-dark);letter-spacing:-.3px;}
 .login-card .sub{margin:0 0 28px;color:var(--md-on-surface-variant);font-size:14px;}
 .pin-dots{display:flex;gap:16px;justify-content:center;margin-bottom:10px;}
 .pin-dots span{
@@ -234,11 +238,32 @@ ul{list-style:none;margin:0;padding:0;}
   aspect-ratio:1;border-radius:50%;border:1px solid var(--md-outline-variant);
   background:var(--md-surface-container-low);font-size:20px;font-weight:600;
   cursor:pointer;color:var(--md-on-surface);
+  box-shadow:0 1px 3px rgba(20,20,40,.06);
+  transition:background .12s, box-shadow .12s, transform .08s;
 }
-.key:active{background:var(--md-primary-container);}
-.key-ghost{border:none;background:transparent;color:var(--md-on-surface-variant);}
+.key:active{background:var(--md-primary-container);transform:scale(.96);}
+.key-ghost{border:none;background:transparent;box-shadow:none;color:var(--md-on-surface-variant);}
 .hint{margin-top:18px;color:var(--md-on-surface-variant);font-size:13px;}
 .footnote{margin-top:36px;color:var(--md-outline);font-size:11px;}
+
+/* ---------- Desktop hero split (login screen only) ---------- */
+@media (min-width: 860px){
+  #screen-login.screen{max-width:960px;}
+  .login-layout{flex-direction:row;}
+  .login-hero{
+    display:flex;flex:1;align-items:center;justify-content:center;
+    background:linear-gradient(160deg, var(--md-primary) 0%, var(--md-primary-dark) 100%);
+    color:#fff;padding:48px 40px;border-radius:28px 0 0 28px;
+  }
+  .login-hero-inner{max-width:340px;}
+  .brand-mark-hero{
+    background:rgba(255,255,255,.16);color:#fff;box-shadow:none;
+  }
+  .login-hero h2{font-size:30px;font-weight:900;margin:4px 0 10px;letter-spacing:-.4px;}
+  .login-hero p{font-size:14.5px;opacity:.92;margin:0 0 22px;line-height:1.5;}
+  .login-hero-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:13.5px;font-weight:600;opacity:.96;}
+  .login-wrap{flex:1;padding:48px 40px;}
+}
 
 .or-divider{display:flex;align-items:center;gap:10px;margin:20px 0 14px;color:var(--md-outline);font-size:12px;}
 .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--md-outline-variant);}
@@ -563,7 +588,29 @@ ul{list-style:none;margin:0;padding:0;}
 
 <!-- ============ LOGIN SCREEN ============ -->
 <section id="screen-login" class="screen active">
-  <div class="login-wrap">
+  <div class="login-layout">
+    <div class="login-hero">
+      <div class="login-hero-inner">
+        <div class="brand-mark brand-mark-hero">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 21V6a2 2 0 012-2h6a2 2 0 012 2v15" stroke-linecap="round"/>
+            <path d="M4 21h10" stroke-linecap="round"/>
+            <path d="M7 8h5" stroke-linecap="round"/>
+            <path d="M14 8h2.2l2.6 2.6c.3.3.5.7.5 1.1V17a1.5 1.5 0 01-3 0v-2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="17.6" cy="9.4" r="0.1"/>
+          </svg>
+        </div>
+        <h2>Pump Hisab</h2>
+        <p>Simple, fast daily accounting built for petrol pumps.</p>
+        <ul class="login-hero-list">
+          <li>✓ Works fully offline, anytime</li>
+          <li>✓ Secure PIN lock for your device</li>
+          <li>✓ Optional Google / Email cloud backup</li>
+          <li>✓ Daily entries, kharcha &amp; monthly reports</li>
+        </ul>
+      </div>
+    </div>
+    <div class="login-wrap">
     <div class="login-card">
       <div class="brand-mark">
         <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -616,6 +663,7 @@ ul{list-style:none;margin:0;padding:0;}
 
       <p class="footnote">© 2026 Pump Hisab App · Offline-first, with optional cloud backup</p>
     </div>
+  </div>
   </div>
 </section>
 
@@ -1083,6 +1131,10 @@ ul{list-style:none;margin:0;padding:0;}
     <div class="scroll-area">
       <ul class="settings-list">
         <li class="settings-item" id="stgChangePin"><span class="si-icon">🔒</span><span class="si-label">Change PIN</span><span class="si-arrow">›</span></li>
+        <li class="settings-item">
+          <span class="si-icon">🛡️</span><span class="si-label">App Lock (PIN on Startup)</span>
+          <label class="switch"><input type="checkbox" id="pinLockToggle"><span class="slider"></span></label>
+        </li>
         <li class="settings-item" id="stgGoogleAccount"><span class="si-icon">👤</span><span class="si-label" id="stgGoogleLabel">Sign in with Google</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgEmailAccount" hidden><span class="si-icon">✉️</span><span class="si-label">Sign in with Email</span><span class="si-arrow">›</span></li>
         <li class="settings-item" id="stgInstallApp"><span class="si-icon">⬇️</span><span class="si-label">Install App</span><span class="si-arrow">›</span></li>
@@ -1131,7 +1183,7 @@ ul{list-style:none;margin:0;padding:0;}
     <h3 id="confirmTitle">Are you sure?</h3>
     <p id="confirmBody" class="muted"></p>
     <div class="modal-actions">
-      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-ghost" id="btnConfirmNo" data-close>Cancel</button>
       <button class="btn btn-danger" id="btnConfirmYes">Confirm</button>
     </div>
   </div>
@@ -1140,6 +1192,7 @@ ul{list-style:none;margin:0;padding:0;}
     <h3 id="emailAuthTitle">Sign in with Email</h3>
     <label class="field"><span>Email</span><input type="email" id="emailAuthEmail" autocomplete="email" placeholder="you@example.com"></label>
     <label class="field"><span>Password</span><input type="password" id="emailAuthPassword" autocomplete="current-password" placeholder="At least 6 characters"></label>
+    <label class="field" id="emailAuthConfirmRow" hidden><span>Confirm Password</span><input type="password" id="emailAuthConfirmPassword" autocomplete="new-password" placeholder="Re-enter your password"></label>
     <p class="pin-error" id="emailAuthError" aria-live="polite" style="min-height:16px;"></p>
     <div class="modal-actions">
       <button class="btn btn-ghost" data-close>Cancel</button>
@@ -1280,6 +1333,7 @@ function openEmailAuthModal(){
   emailAuthMode = 'signin';
   document.getElementById('emailAuthEmail').value = '';
   document.getElementById('emailAuthPassword').value = '';
+  document.getElementById('emailAuthConfirmPassword').value = '';
   document.getElementById('emailAuthError').textContent = '';
   updateEmailAuthModalUI();
   openModal('modalEmailAuth');
@@ -1289,14 +1343,17 @@ function updateEmailAuthModalUI(){
   const title = document.getElementById('emailAuthTitle');
   const submit = document.getElementById('btnEmailAuthSubmit');
   const toggle = document.getElementById('emailAuthToggleMode');
+  const confirmRow = document.getElementById('emailAuthConfirmRow');
   if(emailAuthMode === 'signin'){
     title.textContent = 'Sign in with Email';
     submit.textContent = 'Sign In';
     toggle.textContent = 'New here? Create an account';
+    confirmRow.hidden = true;
   } else {
     title.textContent = 'Create Account';
     submit.textContent = 'Create Account';
     toggle.textContent = 'Already have an account? Sign in';
+    confirmRow.hidden = false;
   }
 }
 
@@ -1333,10 +1390,15 @@ function friendlyAuthError(err){
 document.getElementById('btnEmailAuthSubmit').addEventListener('click', async ()=>{
   const email = document.getElementById('emailAuthEmail').value.trim();
   const password = document.getElementById('emailAuthPassword').value;
+  const confirmPassword = document.getElementById('emailAuthConfirmPassword').value;
   const errEl = document.getElementById('emailAuthError');
   errEl.style.color = '';
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Please enter both email and password.'; return; }
+  if(emailAuthMode === 'signup' && password !== confirmPassword){
+    errEl.textContent = 'Passwords do not match.';
+    return;
+  }
   const btn = document.getElementById('btnEmailAuthSubmit');
   btn.disabled = true;
   try{
@@ -1434,7 +1496,7 @@ function defaultData(){
   return {
     pin: null,           // 4-digit string, null until first run sets it
     entries: {},         // { 'YYYY-MM-DD': entryRecord }
-    settings: { darkMode:false }
+    settings: { darkMode:false, pinLockEnabled:true }
   };
 }
 
@@ -1659,16 +1721,24 @@ function closeModal(){
 document.addEventListener('click', (ev)=>{
   if(ev.target.id === 'modalBackdrop' || ev.target.closest('[data-close]')) closeModal();
 });
-function askConfirm(title, body, onYes){
+let confirmCancelCallback = null;
+function askConfirm(title, body, onYes, onCancel){
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmBody').textContent = body;
   confirmCallback = onYes;
+  confirmCancelCallback = onCancel || null;
   openModal('modalConfirm');
 }
 document.getElementById('btnConfirmYes').addEventListener('click', ()=>{
   closeModal();
   if(confirmCallback) confirmCallback();
   confirmCallback = null;
+  confirmCancelCallback = null;
+});
+document.getElementById('btnConfirmNo').addEventListener('click', ()=>{
+  if(confirmCancelCallback) confirmCancelCallback();
+  confirmCallback = null;
+  confirmCancelCallback = null;
 });
 
 /* ==============================================================
@@ -2513,6 +2583,32 @@ function applyTheme(){
   document.getElementById('darkModeToggle').checked = !!DATA.settings.darkMode;
 }
 
+const pinLockToggleEl = document.getElementById('pinLockToggle');
+pinLockToggleEl.checked = DATA.settings.pinLockEnabled !== false;
+pinLockToggleEl.addEventListener('change', (ev)=>{
+  const turningOn = ev.target.checked;
+  if(!turningOn){
+    askConfirm(
+      'Turn off App Lock?',
+      'The app will open directly without asking for your PIN. Anyone with this device can open it.',
+      ()=>{
+        DATA.settings.pinLockEnabled = false;
+        saveData();
+        showSnackbar('App Lock turned off');
+      },
+      ()=>{ pinLockToggleEl.checked = true; } // revert if cancelled
+    );
+  } else {
+    DATA.settings.pinLockEnabled = true;
+    saveData();
+    if(!DATA.pin){
+      showSnackbar('App Lock is on — you\'ll set a PIN next time you open the app.');
+    } else {
+      showSnackbar('App Lock turned on');
+    }
+  }
+});
+
 document.getElementById('stgAbout').addEventListener('click', ()=> openModal('modalAbout'));
 document.getElementById('stgLogout').addEventListener('click', ()=>{
   askConfirm('Log out?', 'You will need your PIN to access the app again.', lockApp);
@@ -2606,6 +2702,9 @@ function escapeHtml(str){
    Init
    ============================================================== */
 applyTheme();
+if(DATA.settings.pinLockEnabled === false && DATA.pin){
+  unlockApp();
+}
 
 </script>
 </body>
