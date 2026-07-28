@@ -1,0 +1,2863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pump Hisab — Petrol Pump Accounting</title>
+<meta name="theme-color" content="#1B3FCB">
+
+<!-- ===== PWA: installable app / add-to-home-screen ===== -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pump Hisab">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- ===== Firebase (Google Login + Cloud Backup) ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+/* ============================================================
+   Pump Hisab — Material Design 3 token system
+   ============================================================ */
+:root{
+  --md-primary:#2954E3;
+  --md-primary-dark:#1B3FCB;
+  --md-on-primary:#FFFFFF;
+  --md-primary-container:#DDE3FF;
+  --md-on-primary-container:#001453;
+
+  --md-secondary:#146C2E;   /* MS / Petrol green */
+  --md-secondary-container:#B8F1C4;
+  --md-on-secondary-container:#00210A;
+
+  --md-tertiary:#9A5B00;    /* HSD / Diesel amber */
+  --md-tertiary-container:#FFDDAF;
+  --md-on-tertiary-container:#301A00;
+
+  --md-error:#BA1A1A;
+  --md-error-container:#FFDAD6;
+
+  --md-surface:#FBFBFF;
+  --md-surface-container-low:#F5F5FC;
+  --md-surface-container:#EFEFF7;
+  --md-surface-container-high:#E9E9F1;
+  --md-outline:#787680;
+  --md-outline-variant:#C9C5D0;
+  --md-on-surface:#1B1B21;
+  --md-on-surface-variant:#46464F;
+
+  --radius-lg:20px;
+  --radius-md:14px;
+  --radius-sm:10px;
+  --shadow-1:0 1px 2px rgba(20,20,40,.08), 0 1px 6px rgba(20,20,40,.06);
+  --shadow-2:0 2px 6px rgba(20,20,40,.12), 0 4px 14px rgba(20,20,40,.08);
+
+  --font-display:'Roboto',system-ui,sans-serif;
+  --font-mono:'Roboto Mono',ui-monospace,monospace;
+}
+
+[data-theme="dark"]{
+  --md-primary:#B4C4FF;
+  --md-primary-dark:#8DA6FF;
+  --md-on-primary:#062E93;
+  --md-primary-container:#233A82;
+  --md-on-primary-container:#DDE3FF;
+
+  --md-secondary:#9DD5A6;
+  --md-secondary-container:#00522019;
+  --md-secondary-container:#0C4620;
+  --md-on-secondary-container:#B8F1C4;
+
+  --md-tertiary:#FFB868;
+  --md-tertiary-container:#4F3300;
+  --md-on-tertiary-container:#FFDDAF;
+
+  --md-error:#FFB4AB;
+  --md-error-container:#93000A;
+
+  --md-surface:#121318;
+  --md-surface-container-low:#1B1C22;
+  --md-surface-container:#1F2026;
+  --md-surface-container-high:#292A31;
+  --md-outline:#918F99;
+  --md-outline-variant:#46464F;
+  --md-on-surface:#E4E2E9;
+  --md-on-surface-variant:#C7C5D0;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  font-family:var(--font-display);
+  background:var(--md-surface-container-low);
+  color:var(--md-on-surface);
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+button{font-family:inherit;}
+input,button{outline:none;}
+input:focus-visible,button:focus-visible,.settings-item:focus-visible{
+  outline:2px solid var(--md-primary); outline-offset:2px;
+}
+ul{list-style:none;margin:0;padding:0;}
+.muted{color:var(--md-on-surface-variant);}
+
+/* ---------- App frame (mobile-first, capped width for desktop) ---------- */
+.screen{
+  display:none;
+  max-width:480px;
+  margin:0 auto;
+  min-height:100dvh;
+  background:var(--md-surface);
+  position:relative;
+  flex-direction:column;
+}
+.screen.active{display:flex;}
+.app-shell{min-height:100dvh;}
+
+/* ---------- Desktop / large-screen optimization ---------- */
+@media (min-width: 860px){
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, var(--md-primary-container) 0%, transparent 60%),
+      var(--md-surface-container-low);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 24px;
+  }
+  .screen{
+    max-width:600px;
+    width:100%;
+    min-height:calc(100dvh - 64px);
+    border-radius:28px;
+    box-shadow:0 8px 24px rgba(20,20,40,.10), 0 2px 8px rgba(20,20,40,.08);
+    overflow:hidden;
+  }
+  .app-shell{
+    max-width:600px;
+    width:100%;
+    margin:0 auto;
+    min-height:calc(100dvh - 64px);
+  }
+  .topbar{border-radius:28px 28px 0 0;}
+  .bottom-nav{border-radius:0 0 28px 28px;padding-bottom:12px;}
+  .nav-item{cursor:pointer;transition:background .15s,color .15s;}
+  .nav-item:hover{background:var(--md-surface-container-high);}
+  .settings-item:hover, .icon-btn:hover, .key:hover{cursor:pointer;}
+  .key:hover{background:var(--md-primary-container);border-color:var(--md-primary);}
+  .btn:hover, .btn-google:hover{filter:brightness(1.03);}
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:8px;}
+}
+
+@media (min-width: 1200px){
+  .screen{max-width:680px;}
+  .app-shell{max-width:680px;}
+}
+
+.scroll-area{
+  flex:1;
+  overflow-y:auto;
+  padding:16px 16px 8px;
+}
+.bottom-spacer{height:76px;}
+
+/* ---------- Top app bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 8px;
+  background:var(--md-surface);
+  border-bottom:1px solid var(--md-outline-variant);
+  position:sticky;top:0;z-index:5;
+}
+.topbar-brand{background:var(--md-primary);color:var(--md-on-primary);border-bottom:none;}
+.topbar-brand .icon-btn, .topbar-brand .eyebrow{color:var(--md-on-primary);}
+.topbar-title{flex:1;text-align:left;}
+.eyebrow{font-size:19px;font-weight:700;letter-spacing:.1px;}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;border:none;background:transparent;
+  font-size:18px;display:flex;align-items:center;justify-content:center;
+  color:var(--md-on-surface);cursor:pointer;transition:background .15s;
+}
+.icon-btn:hover{background:var(--md-surface-container-high);}
+.topbar-brand .icon-btn:hover{background:rgba(255,255,255,.15);}
+
+/* ---------- Buttons ---------- */
+.btn{
+  font-weight:700;font-size:15px;border:none;border-radius:100px;
+  padding:14px 20px;cursor:pointer;transition:transform .08s ease, box-shadow .15s;
+  letter-spacing:.15px;
+}
+.btn:active{transform:scale(.98);}
+.btn-block{width:100%;display:block;}
+.btn-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:var(--shadow-1);}
+.btn-primary:hover{box-shadow:var(--shadow-2);}
+.btn-danger{background:var(--md-error-container);color:var(--md-error);}
+.btn-ghost{background:transparent;color:var(--md-primary);}
+
+/* ---------- Login ---------- */
+.login-layout{display:flex;flex-direction:column;flex:1;min-height:100%;}
+.login-hero{display:none;}
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{width:100%;max-width:360px;text-align:center;}
+.brand-mark{
+  width:72px;height:72px;border-radius:24px;margin:0 auto 16px;
+  background:linear-gradient(155deg, var(--md-primary-container) 0%, var(--md-surface-container-high) 100%);
+  color:var(--md-primary-dark);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 16px rgba(20,20,60,.10);
+}
+.login-card h1{margin:0 0 4px;font-size:28px;font-weight:900;color:var(--md-primary-dark);letter-spacing:-.3px;}
+.login-card .sub{margin:0 0 28px;color:var(--md-on-surface-variant);font-size:14px;}
+.pin-dots{display:flex;gap:16px;justify-content:center;margin-bottom:10px;}
+.pin-dots span{
+  width:16px;height:16px;border-radius:50%;border:2px solid var(--md-outline);
+  transition:background .15s, border-color .15s;
+}
+.pin-dots span.filled{background:var(--md-primary);border-color:var(--md-primary);}
+.pin-dots.shake{animation:shake .35s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);} 60%{transform:translateX(-6px);} 80%{transform:translateX(6px);}
+}
+.pin-error{min-height:18px;color:var(--md-error);font-size:13px;margin-bottom:10px;}
+.keypad{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  max-width:280px;margin:18px auto 0;
+}
+.key{
+  aspect-ratio:1;border-radius:50%;border:1px solid var(--md-outline-variant);
+  background:var(--md-surface-container-low);font-size:20px;font-weight:600;
+  cursor:pointer;color:var(--md-on-surface);
+  box-shadow:0 1px 3px rgba(20,20,40,.06);
+  transition:background .12s, box-shadow .12s, transform .08s;
+}
+.key:active{background:var(--md-primary-container);transform:scale(.96);}
+.key-ghost{border:none;background:transparent;box-shadow:none;color:var(--md-on-surface-variant);}
+.hint{margin-top:18px;color:var(--md-on-surface-variant);font-size:13px;}
+.footnote{margin-top:36px;color:var(--md-outline);font-size:11px;}
+
+/* ---------- Desktop hero split (login screen only) ---------- */
+@media (min-width: 860px){
+  #screen-login.screen{max-width:960px;}
+  .login-layout{flex-direction:row;}
+  .login-hero{
+    display:flex;flex:1;align-items:center;justify-content:center;
+    background:linear-gradient(160deg, var(--md-primary) 0%, var(--md-primary-dark) 100%);
+    color:#fff;padding:48px 40px;border-radius:28px 0 0 28px;
+  }
+  .login-hero-inner{max-width:340px;}
+  .brand-mark-hero{
+    background:rgba(255,255,255,.16);color:#fff;box-shadow:none;
+  }
+  .login-hero h2{font-size:30px;font-weight:900;margin:4px 0 10px;letter-spacing:-.4px;}
+  .login-hero p{font-size:14.5px;opacity:.92;margin:0 0 22px;line-height:1.5;}
+  .login-hero-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:13.5px;font-weight:600;opacity:.96;}
+  .login-wrap{flex:1;padding:48px 40px;}
+}
+
+.or-divider{display:flex;align-items:center;gap:10px;margin:20px 0 14px;color:var(--md-outline);font-size:12px;}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--md-outline-variant);}
+.btn-google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--md-outline-variant);
+  background:var(--md-surface);color:var(--md-on-surface);font-family:inherit;font-size:14px;font-weight:500;
+  cursor:pointer;box-shadow:var(--shadow-1);
+}
+.btn-google:active{background:var(--md-surface-container-high);}
+.btn-google[disabled]{opacity:.6;cursor:default;}
+
+/* ---------- Install App banner ---------- */
+.install-banner{
+  display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:12px 14px;
+  background:var(--md-primary-container);color:var(--md-on-primary-container);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-1);
+}
+.install-banner p{margin:0;font-size:13px;flex:1;line-height:1.35;}
+.install-banner button{
+  border:none;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;
+  background:var(--md-primary);color:var(--md-on-primary);cursor:pointer;white-space:nowrap;
+}
+.install-banner .ib-close{background:transparent;color:inherit;font-weight:400;padding:8px;}
+
+/* ---------- Dashboard ---------- */
+.date-pill{
+  display:flex;align-items:center;justify-content:space-between;width:100%;
+  background:var(--md-surface-container);border:none;border-radius:100px;
+  padding:12px 18px;font-size:15px;font-weight:600;color:var(--md-on-surface);
+  margin-bottom:16px;cursor:pointer;
+}
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.stat-card{
+  border-radius:var(--radius-md);padding:16px;color:#fff;
+  display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-1);
+}
+.stat-fuel{background:linear-gradient(135deg,var(--md-secondary),#0B4E20);}
+.stat-kharcha{background:linear-gradient(135deg,var(--md-primary),var(--md-primary-dark));}
+.stat-label{font-size:12.5px;opacity:.9;font-weight:600;}
+.stat-label.light{color:#fff;opacity:.85;}
+.stat-value{font-family:var(--font-mono);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;}
+.stat-value.big{font-size:26px;}
+
+.balance-card{
+  background:linear-gradient(135deg,#3B2E8A,#241B5C);
+  border-radius:var(--radius-lg);padding:20px;color:#fff;
+  display:flex;align-items:center;gap:16px;margin-bottom:16px;
+  box-shadow:var(--shadow-2);
+}
+.gauge{position:relative;width:96px;height:60px;flex:none;}
+.gauge-svg{width:100%;height:100%;}
+.gauge-track{fill:none;stroke:rgba(255,255,255,.18);stroke-width:9;stroke-linecap:round;}
+.gauge-fill{fill:none;stroke:#8DE38A;stroke-width:9;stroke-linecap:round;
+  stroke-dasharray:173; stroke-dashoffset:173; transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1);}
+.gauge-needle{
+  position:absolute;left:50%;bottom:6px;width:2.5px;height:38px;background:#fff;
+  border-radius:2px;transform-origin:bottom center;transform:translateX(-50%) rotate(0deg);
+  transition:transform 1s cubic-bezier(.2,.8,.2,1);
+}
+.balance-text{display:flex;flex-direction:column;gap:4px;}
+.link-btn{background:none;border:none;color:#C9D4FF;font-size:12.5px;font-weight:700;
+  padding:0;text-align:left;cursor:pointer;margin-top:2px;}
+
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.quick-tile{
+  background:var(--md-surface-container);border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-md);padding:16px 10px;display:flex;flex-direction:column;
+  align-items:center;gap:8px;font-weight:600;font-size:13.5px;color:var(--md-on-surface);
+  cursor:pointer;
+}
+.quick-tile:active{background:var(--md-primary-container);}
+.qi{font-size:22px;}
+
+.footline-card{
+  background:var(--md-surface-container);border-radius:var(--radius-md);
+  padding:14px 16px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.footline-card.single{justify-content:flex-start;}
+.footline-card div{display:flex;flex-direction:column;gap:2px;}
+.footline-card strong{font-family:var(--font-mono);font-size:15px;}
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav{
+  display:flex;border-top:1px solid var(--md-outline-variant);
+  background:var(--md-surface);position:sticky;bottom:0;
+  padding:6px 4px 8px;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;font-size:10.5px;font-weight:600;color:var(--md-on-surface-variant);
+  padding:6px 2px;border-radius:12px;cursor:pointer;
+}
+.nav-item span{font-size:18px;}
+.nav-item.active{color:var(--md-primary-dark);}
+
+/* ---------- Forms / fields ---------- */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--md-on-surface-variant);}
+.field input, .field select{
+  font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--md-on-surface);
+  border:1.5px solid var(--md-outline-variant);border-radius:var(--radius-sm);
+  padding:12px 14px;background:var(--md-surface);transition:border-color .15s;
+}
+.field input:focus{border-color:var(--md-primary);}
+.field input.invalid{border-color:var(--md-error);}
+.input-num{width:100%;}
+.input-num.ro{background:var(--md-surface-container);color:var(--md-on-surface-variant);}
+
+.date-banner{
+  background:var(--md-primary-container);color:var(--md-on-primary-container);
+  border-radius:var(--radius-sm);padding:10px 14px;font-weight:700;font-size:13.5px;
+  margin-bottom:14px;text-align:center;
+}
+
+.fuel-card{
+  border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;
+  border:1.5px solid var(--md-outline-variant);
+}
+.ms-card{background:linear-gradient(180deg,var(--md-secondary-container) 0%, var(--md-surface) 90px);}
+.hsd-card{background:linear-gradient(180deg,var(--md-tertiary-container) 0%, var(--md-surface) 90px);}
+.fuel-card-head{font-weight:800;font-size:15.5px;display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+.dot-ms{background:var(--md-secondary);}
+.dot-hsd{background:var(--md-tertiary);}
+
+.nozzle-block{
+  background:var(--md-surface);border-radius:var(--radius-md);padding:12px;
+  margin-bottom:10px;border:1px solid var(--md-outline-variant);
+}
+.nozzle-title{font-weight:700;font-size:13px;margin-bottom:8px;color:var(--md-on-surface-variant);}
+.rw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--md-on-surface-variant);}
+.rw:last-child{margin-bottom:0;}
+.rw input{flex:none;width:130px;text-align:right;padding:8px 10px;font-size:14px;}
+.sale-row .calc-val{font-family:var(--font-mono);font-weight:700;color:var(--md-primary-dark);font-size:14.5px;}
+
+.totals-strip{
+  display:flex;justify-content:space-between;background:var(--md-surface-container);
+  border-radius:var(--radius-sm);padding:10px 14px;margin-top:4px;
+}
+.totals-strip div{display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);}
+.totals-strip strong{font-family:var(--font-mono);font-size:15px;color:var(--md-on-surface);}
+
+.grand-totals{
+  display:flex;justify-content:space-between;background:var(--md-primary-container);
+  color:var(--md-on-primary-container);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:18px;
+}
+.grand-totals div{display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:700;}
+.grand-totals strong{font-family:var(--font-mono);font-size:17px;}
+
+/* ---------- Kharcha ---------- */
+.section-label{font-weight:800;font-size:14px;margin:18px 0 10px;color:var(--md-on-surface-variant);}
+.kharcha-total-card{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--md-primary-container);color:var(--md-on-primary-container);
+  border-radius:var(--radius-md);padding:14px 16px;margin-bottom:12px;font-weight:700;
+}
+.kharcha-total-card strong{font-family:var(--font-mono);font-size:18px;}
+.kharcha-list li{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--md-surface-container);border-radius:var(--radius-md);
+  padding:13px 14px;margin-bottom:10px;
+}
+.kharcha-item-name{font-weight:700;font-size:14.5px;}
+.kharcha-item-amt{font-family:var(--font-mono);color:var(--md-on-surface-variant);font-size:13px;margin-top:2px;display:block;}
+.kharcha-actions{display:flex;gap:6px;}
+.kharcha-actions button{
+  width:34px;height:34px;border-radius:50%;border:none;background:var(--md-surface);
+  cursor:pointer;font-size:14px;
+}
+.kharcha-actions .del{color:var(--md-error);}
+.kharcha-actions .edit{color:var(--md-primary-dark);}
+
+/* ---------- Summary panels ---------- */
+.panel{
+  background:var(--md-surface-container);border-radius:var(--radius-lg);
+  padding:16px;margin-bottom:14px;
+}
+.panel-title{font-weight:800;font-size:14.5px;margin-bottom:10px;}
+.fuel-title{color:var(--md-secondary);}
+.kharcha-title{color:var(--md-primary-dark);}
+.bal-title{color:#5B3EA6;}
+.kv{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;color:var(--md-on-surface-variant);font-weight:600;}
+.kv strong{font-family:var(--font-mono);color:var(--md-on-surface);}
+.kv.total{border-top:1px dashed var(--md-outline-variant);margin-top:4px;padding-top:10px;font-size:15px;color:var(--md-on-surface);}
+.kv.total strong{font-size:17px;}
+
+/* ---------- History ---------- */
+.kh-group{
+  background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-md);margin-bottom:14px;overflow:hidden;
+}
+.kh-group-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--md-surface-container);font-weight:700;font-size:14.5px;
+}
+.kh-group-head .kh-count{font-weight:500;font-size:12px;color:var(--md-on-surface-variant);}
+.kh-group-rows{padding:4px 16px;}
+.kh-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;border-bottom:1px solid var(--md-outline-variant);font-size:13.5px;
+}
+.kh-row:last-child{border-bottom:none;}
+.kh-row-date{color:var(--md-on-surface-variant);}
+.kh-row-amt{font-weight:600;font-family:var(--font-mono);}
+.kh-group-total{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+  font-weight:700;font-size:13.5px;
+}
+.history-filter{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.history-filter input[type="date"]{
+  flex:1;border:1px solid var(--md-outline-variant);border-radius:100px;
+  padding:10px 16px;font-size:14px;font-family:inherit;color:var(--md-on-surface);
+  background:var(--md-surface-container-low);
+}
+.history-filter .icon-btn{
+  width:36px;height:36px;background:var(--md-surface-container);flex-shrink:0;
+}
+.history-list li, .search-results li{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--md-surface-container);border-radius:var(--radius-md);
+  padding:15px 16px;margin-bottom:10px;cursor:pointer;transition:background .15s;
+}
+.history-list li:active{background:var(--md-primary-container);}
+.hl-date{font-weight:700;font-size:14.5px;}
+.hl-sub{font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;}
+.hl-amt{font-family:var(--font-mono);font-weight:700;color:var(--md-secondary);font-size:15px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--md-on-surface-variant);}
+.empty-state p{font-weight:700;font-size:15px;margin:0 0 4px;color:var(--md-on-surface);}
+.empty-state span{font-size:13px;}
+
+/* ---------- History details ---------- */
+.detail-section{margin-bottom:16px;}
+.detail-heading{font-weight:800;font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.detail-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;color:var(--md-on-surface-variant);}
+.detail-row strong{color:var(--md-on-surface);font-family:var(--font-mono);}
+.divider{border:none;border-top:1px solid var(--md-outline-variant);margin:14px 0;}
+
+/* ---------- Edit entry ---------- */
+.edit-actions{display:flex;gap:12px;margin-top:6px;}
+.edit-actions .btn{flex:1;}
+
+/* ---------- Monthly report ---------- */
+.month-switcher{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--md-surface-container);border-radius:100px;padding:6px 10px;margin-bottom:16px;
+  font-weight:700;font-size:15px;
+}
+.report-table-wrap{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--md-outline-variant);}
+.report-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.report-table th,.report-table td{padding:10px 12px;text-align:right;white-space:nowrap;}
+.report-table th:first-child,.report-table td:first-child{text-align:left;}
+.report-table thead{background:var(--md-surface-container);font-weight:700;color:var(--md-on-surface-variant);}
+.report-table tbody tr{border-top:1px solid var(--md-outline-variant);}
+.report-table td{font-family:var(--font-mono);}
+.report-table tfoot td{font-weight:800;border-top:2px solid var(--md-outline);}
+
+/* ---------- Settings ---------- */
+.settings-list{background:var(--md-surface-container);border-radius:var(--radius-lg);overflow:hidden;}
+.settings-item{
+  display:flex;align-items:center;gap:14px;padding:15px 16px;
+  border-bottom:1px solid var(--md-outline-variant);cursor:pointer;
+}
+.settings-item:last-child{border-bottom:none;}
+.si-icon{font-size:18px;width:22px;text-align:center;}
+.si-label{flex:1;font-weight:600;font-size:14.5px;}
+.si-arrow{color:var(--md-outline);}
+.settings-item.danger .si-label, .settings-item.danger .si-icon{color:var(--md-error);}
+.switch{position:relative;display:inline-block;width:42px;height:24px;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:var(--md-outline-variant);border-radius:100px;transition:.2s;cursor:pointer;}
+.slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:var(--md-primary);}
+.switch input:checked + .slider:before{transform:translateX(18px);}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(10,10,20,.5);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.modal-backdrop[hidden]{display:none;}
+.modal{
+  background:var(--md-surface);border-radius:var(--radius-lg);padding:22px;
+  max-width:360px;width:100%;box-shadow:var(--shadow-2);
+}
+.modal h3{margin:0 0 12px;font-size:18px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+
+/* ---------- Snackbar ---------- */
+.snackbar{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120%);
+  background:#2B2B33;color:#fff;padding:13px 20px;border-radius:12px;font-size:14px;font-weight:600;
+  z-index:100;transition:transform .25s ease;box-shadow:var(--shadow-2);max-width:90vw;text-align:center;
+}
+.snackbar.show{transform:translateX(-50%) translateY(0);}
+
+/* ---------- Misc ---------- */
+.chip-arrow{font-size:13px;}
+
+@media (min-width:520px){
+  body{background:var(--md-surface-container);}
+  .screen{box-shadow:var(--shadow-2);}
+}
+
+@media print{
+  .topbar,.bottom-nav,#appShell > section:not(.active){display:none !important;}
+  body{background:#fff;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- Toast / Snackbar -->
+<div id="snackbar" class="snackbar"></div>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<section id="screen-login" class="screen active">
+  <div class="login-layout">
+    <div class="login-hero">
+      <div class="login-hero-inner">
+        <div class="brand-mark brand-mark-hero">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 21V6a2 2 0 012-2h6a2 2 0 012 2v15" stroke-linecap="round"/>
+            <path d="M4 21h10" stroke-linecap="round"/>
+            <path d="M7 8h5" stroke-linecap="round"/>
+            <path d="M14 8h2.2l2.6 2.6c.3.3.5.7.5 1.1V17a1.5 1.5 0 01-3 0v-2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="17.6" cy="9.4" r="0.1"/>
+          </svg>
+        </div>
+        <h2>Pump Hisab</h2>
+        <p>Simple, fast daily accounting built for petrol pumps.</p>
+        <ul class="login-hero-list">
+          <li>✓ Google / Email sign-in required</li>
+          <li>✓ Your data backs up to your account automatically</li>
+          <li>✓ Same account, same data, on every device</li>
+          <li>✓ Daily entries, kharcha &amp; monthly reports</li>
+        </ul>
+      </div>
+    </div>
+    <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M4 21V6a2 2 0 012-2h6a2 2 0 012 2v15" stroke-linecap="round"/>
+          <path d="M4 21h10" stroke-linecap="round"/>
+          <path d="M7 8h5" stroke-linecap="round"/>
+          <path d="M14 8h2.2l2.6 2.6c.3.3.5.7.5 1.1V17a1.5 1.5 0 01-3 0v-2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="17.6" cy="9.4" r="0.1"/>
+        </svg>
+      </div>
+      <h1>Pump Hisab</h1>
+      <p class="sub">Petrol Pump Accounting, made simple</p>
+
+      <button class="btn-google" id="btnGoogleSignIn" type="button">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 009 18z"/>
+          <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/>
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+        </svg>
+        <span id="googleBtnLabel">Continue with Google</span>
+      </button>
+      <button class="btn-google" id="btnEmailSignIn" type="button" style="margin-top:10px;">
+        <span style="font-size:16px;">✉️</span>
+        <span>Continue with Email</span>
+      </button>
+      <p class="hint" id="googleUserHint" style="min-height:0"></p>
+
+      <p class="footnote">© 2026 Pump Hisab App · Sign in required · Cloud-backed</p>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ============ APP SHELL (all logged-in screens) ============ -->
+<div id="appShell" class="app-shell" hidden>
+
+  <!-- ---------- DASHBOARD ---------- -->
+  <section id="screen-dashboard" class="screen">
+    <header class="topbar topbar-brand">
+      <button class="icon-btn" data-nav="menu" aria-label="Menu">☰</button>
+      <div class="topbar-title">
+        <span class="eyebrow">Dashboard</span>
+      </div>
+      <button class="icon-btn" id="btnLogout2" aria-label="Notifications">🔔</button>
+    </header>
+    <div class="scroll-area">
+      <div class="install-banner" id="installBanner" hidden>
+        <p>Install Pump Hisab on your phone for one-tap access.</p>
+        <button id="installBtn" type="button">Install</button>
+        <button class="ib-close" id="installBannerClose" type="button" aria-label="Dismiss">✕</button>
+      </div>
+
+      <button class="date-pill" id="dashDateBtn">
+        <span id="dashDateLabel">—</span>
+        <span class="chip-arrow">📅</span>
+      </button>
+
+      <div class="stat-row">
+        <div class="stat-card stat-fuel">
+          <span class="stat-label">Total Fuel Sale</span>
+          <span class="stat-value" id="dashFuelSale">₹0.00</span>
+        </div>
+        <div class="stat-card stat-kharcha">
+          <span class="stat-label">Total Kharcha</span>
+          <span class="stat-value" id="dashKharcha">₹0.00</span>
+        </div>
+      </div>
+
+      <div class="balance-card">
+        <div class="gauge" id="gauge">
+          <svg viewBox="0 0 120 70" class="gauge-svg">
+            <path d="M10,65 A55,55 0 0,1 110,65" class="gauge-track"/>
+            <path d="M10,65 A55,55 0 0,1 110,65" class="gauge-fill" id="gaugeFill"/>
+          </svg>
+          <div class="gauge-needle" id="gaugeNeedle"></div>
+        </div>
+        <div class="balance-text">
+          <span class="stat-label light">Total Balance</span>
+          <span class="stat-value big" id="dashBalance">₹0.00</span>
+          <button class="link-btn" data-goto="summary">View Details ›</button>
+        </div>
+      </div>
+
+      <div class="footline-card single">
+        <div><span class="muted">Difference (Fuel Sale − Kharcha)</span><strong id="dashDifference">₹0.00</strong></div>
+      </div>
+
+      <div class="quick-grid">
+        <button class="quick-tile" data-goto="daily-entry">
+          <span class="qi">📝</span> Daily Entry
+        </button>
+        <button class="quick-tile" data-goto="history">
+          <span class="qi">🕘</span> History
+        </button>
+        <button class="quick-tile" data-goto="monthly-report">
+          <span class="qi">📊</span> Reports
+        </button>
+        <button class="quick-tile" data-goto="settings">
+          <span class="qi">⚙️</span> Settings
+        </button>
+        <button class="quick-tile" data-goto="kharcha-history">
+          <span class="qi">🧾</span> Kharcha History
+        </button>
+      </div>
+
+      <div class="footline-card">
+        <div><span class="muted">Previous Balance</span><strong id="dashPrevBal">₹0.00</strong></div>
+        <div><span class="muted">Last Entry</span><strong id="dashLastEntry">—</strong></div>
+      </div>
+      <div class="bottom-spacer"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-goto="dashboard"><span>🏠</span>Dashboard</button>
+      <button class="nav-item" data-goto="daily-entry"><span>📝</span>Daily Entry</button>
+      <button class="nav-item" data-goto="history"><span>🕘</span>History</button>
+      <button class="nav-item" data-goto="monthly-report"><span>📊</span>Reports</button>
+      <button class="nav-item" data-goto="settings"><span>⚙️</span>Settings</button>
+    </nav>
+  </section>
+
+  <!-- ---------- DAILY ENTRY ---------- -->
+  <section id="screen-daily-entry" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="dashboard">←</button>
+      <div class="topbar-title"><span class="eyebrow">Daily Entry</span></div>
+      <button class="icon-btn" id="entryDateBtn">📅</button>
+    </header>
+    <div class="scroll-area">
+      <form id="entryForm">
+        <input type="hidden" id="entryDate">
+        <div class="date-banner" id="entryDateLabel">—</div>
+
+        <div class="field">
+          <span>Previous Balance (₹)</span>
+          <input type="number" step="0.01" id="entryPrevBalance" class="input-num ro" readonly>
+        </div>
+
+        <!-- MS -->
+        <div class="fuel-card ms-card">
+          <div class="fuel-card-head"><span class="dot dot-ms"></span> MS (Petrol)</div>
+          <label class="field">
+            <span>MS Rate (₹ / Litre)</span>
+            <input type="number" step="0.01" min="0" id="msRate" class="input-num" required>
+          </label>
+
+          <div class="nozzle-block">
+            <div class="nozzle-title">MS N1</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="msN1Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="msN1Close" class="input-num" required></div>
+            <div class="rw sale-row"><span>Sale (Litre)</span><span class="calc-val" id="msN1Sale">0.000</span></div>
+          </div>
+          <div class="nozzle-block">
+            <div class="nozzle-title">MS N2</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="msN2Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="msN2Close" class="input-num" required></div>
+            <div class="rw sale-row"><span>Sale (Litre)</span><span class="calc-val" id="msN2Sale">0.000</span></div>
+          </div>
+
+          <div class="totals-strip">
+            <div><span>Total MS Sale (Litre)</span><strong id="msTotalSale">0.000</strong></div>
+            <div><span>MS Amount (₹)</span><strong id="msAmount">0.00</strong></div>
+          </div>
+        </div>
+
+        <!-- HSD -->
+        <div class="fuel-card hsd-card">
+          <div class="fuel-card-head"><span class="dot dot-hsd"></span> HSD (Diesel)</div>
+          <label class="field">
+            <span>HSD Rate (₹ / Litre)</span>
+            <input type="number" step="0.01" min="0" id="hsdRate" class="input-num" required>
+          </label>
+
+          <div class="nozzle-block">
+            <div class="nozzle-title">HSD N1</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="hsdN1Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="hsdN1Close" class="input-num" required></div>
+            <div class="rw sale-row"><span>Sale (Litre)</span><span class="calc-val" id="hsdN1Sale">0.000</span></div>
+          </div>
+          <div class="nozzle-block">
+            <div class="nozzle-title">HSD N2</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="hsdN2Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="hsdN2Close" class="input-num" required></div>
+            <div class="rw sale-row"><span>Sale (Litre)</span><span class="calc-val" id="hsdN2Sale">0.000</span></div>
+          </div>
+
+          <div class="totals-strip">
+            <div><span>Total HSD Sale (Litre)</span><strong id="hsdTotalSale">0.000</strong></div>
+            <div><span>HSD Amount (₹)</span><strong id="hsdAmount">0.00</strong></div>
+          </div>
+        </div>
+
+        <div class="grand-totals">
+          <div><span>Total Fuel Sale (Litre)</span><strong id="grandLitre">0.000</strong></div>
+          <div><span>Total Fuel Sale Amount (₹)</span><strong id="grandAmount">0.00</strong></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Next</button>
+      </form>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- ADD KHARCHA ENTRY ---------- -->
+  <section id="screen-add-kharcha" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="daily-entry">←</button>
+      <div class="topbar-title"><span class="eyebrow">Add Kharcha Entry</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <form id="kharchaForm">
+        <label class="field">
+          <span>Name / Description</span>
+          <select id="kharchaName" required>
+            <option value="">Select Name / Description</option>
+            <option value="Phone Pay">Phone Pay</option>
+            <option value="Nagad Cash">Nagad Cash</option>
+            <option value="By Ajay ji">By Ajay ji</option>
+            <option value="Sonal">Sonal</option>
+            <option value="Pani">Pani</option>
+            <option value="__other__">Other (Type manually)</option>
+          </select>
+        </label>
+        <label class="field" id="kharchaNameOtherWrap" hidden>
+          <span>Enter Name</span>
+          <input type="text" id="kharchaNameOther" placeholder="Enter custom name">
+        </label>
+        <label class="field">
+          <span>Amount (₹)</span>
+          <input type="number" step="0.01" min="0" id="kharchaAmount" placeholder="Enter Amount" required>
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">＋ Add Entry</button>
+      </form>
+
+      <div class="section-label">Kharcha List</div>
+      <div class="kharcha-total-card">
+        <span>Total Kharcha</span>
+        <strong id="kharchaTotalAmt">₹0.00</strong>
+      </div>
+      <ul class="kharcha-list" id="kharchaList"></ul>
+
+      <button class="btn btn-primary btn-block" id="btnGoSummary" style="margin-top:16px;">Continue to Summary</button>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- SUMMARY ---------- -->
+  <section id="screen-summary" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="dashboard">←</button>
+      <div class="topbar-title"><span class="eyebrow">Summary</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <div class="date-banner" id="summaryDateLabel">—</div>
+
+      <div class="panel">
+        <div class="panel-title fuel-title">Fuel Sale Summary</div>
+        <div class="kv"><span>MS Amount (₹)</span><strong id="sumMsAmount">0.00</strong></div>
+        <div class="kv"><span>HSD Amount (₹)</span><strong id="sumHsdAmount">0.00</strong></div>
+        <div class="kv total"><span>Total Fuel Sale (₹)</span><strong id="sumFuelTotal">0.00</strong></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title kharcha-title">Kharcha Summary</div>
+        <div class="kv total"><span>Total Kharcha (₹)</span><strong id="sumKharchaTotal">0.00</strong></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title bal-title">Balance Summary</div>
+        <div class="kv"><span>Previous Balance</span><strong id="sumPrevBal">0.00</strong></div>
+        <div class="kv total"><span>Total Balance (₹)</span><strong id="sumTotalBal">0.00</strong></div>
+        <div class="kv total"><span>Difference (Fuel Sale − Kharcha)</span><strong id="sumDifference">0.00</strong></div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="btnSaveEntry">Save Entry</button>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- HISTORY ---------- -->
+  <section id="screen-history" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-goto="dashboard">☰</button>
+      <div class="topbar-title"><span class="eyebrow">History</span></div>
+      <button class="icon-btn" data-goto="search-by-date">🔍</button>
+    </header>
+    <div class="scroll-area">
+      <div class="history-filter">
+        <input type="date" id="historyDateFilter" aria-label="Filter by date">
+        <button type="button" class="icon-btn" id="historyDateClear" title="Clear filter" hidden>✕</button>
+      </div>
+      <ul class="history-list" id="historyList"></ul>
+      <div class="empty-state" id="historyEmpty" hidden>
+        <p>No entries yet</p>
+        <span>Save a daily entry to see it appear here.</span>
+      </div>
+      <div class="bottom-spacer"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item" data-goto="dashboard"><span>🏠</span>Dashboard</button>
+      <button class="nav-item" data-goto="daily-entry"><span>📝</span>Daily Entry</button>
+      <button class="nav-item active" data-goto="history"><span>🕘</span>History</button>
+      <button class="nav-item" data-goto="monthly-report"><span>📊</span>Reports</button>
+      <button class="nav-item" data-goto="settings"><span>⚙️</span>Settings</button>
+    </nav>
+  </section>
+
+  <!-- ---------- HISTORY DETAILS ---------- -->
+  <section id="screen-history-details" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="history">←</button>
+      <div class="topbar-title"><span class="eyebrow">History Details</span></div>
+      <button class="icon-btn" id="btnPrint">🖨️</button>
+    </header>
+    <div class="scroll-area" id="historyDetailsBody">
+      <!-- populated by JS -->
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- EDIT ENTRY (reuses entry form markup, filled by JS) ---------- -->
+  <section id="screen-edit-entry" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="history-details">←</button>
+      <div class="topbar-title"><span class="eyebrow">Edit Entry</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <label class="field">
+        <span>Entry Date</span>
+        <input type="date" id="editDateInput" required>
+      </label>
+      <form id="editForm">
+        <div class="field">
+          <span>Previous Balance (₹)</span>
+          <input type="number" step="0.01" id="editPrevBalance" class="input-num ro" readonly>
+        </div>
+        <div class="fuel-card ms-card">
+          <div class="fuel-card-head"><span class="dot dot-ms"></span> MS (Petrol)</div>
+          <label class="field"><span>MS Rate (₹ / Litre)</span><input type="number" step="0.01" id="editMsRate" class="input-num" required></label>
+          <div class="nozzle-block">
+            <div class="nozzle-title">MS N1</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="editMsN1Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="editMsN1Close" class="input-num" required></div>
+          </div>
+          <div class="nozzle-block">
+            <div class="nozzle-title">MS N2</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="editMsN2Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="editMsN2Close" class="input-num" required></div>
+          </div>
+        </div>
+        <div class="fuel-card hsd-card">
+          <div class="fuel-card-head"><span class="dot dot-hsd"></span> HSD (Diesel)</div>
+          <label class="field"><span>HSD Rate (₹ / Litre)</span><input type="number" step="0.01" id="editHsdRate" class="input-num" required></label>
+          <div class="nozzle-block">
+            <div class="nozzle-title">HSD N1</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="editHsdN1Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="editHsdN1Close" class="input-num" required></div>
+          </div>
+          <div class="nozzle-block">
+            <div class="nozzle-title">HSD N2</div>
+            <div class="rw"><span>Opening (Auto)</span><input type="number" step="0.001" id="editHsdN2Open" class="input-num ro" readonly></div>
+            <div class="rw"><span>Closing</span><input type="number" step="0.001" id="editHsdN2Close" class="input-num" required></div>
+          </div>
+        </div>
+
+        <div class="section-label">Kharcha</div>
+        <div class="kharcha-total-card">
+          <span>Total Kharcha</span>
+          <strong id="editKharchaTotalAmt">₹0.00</strong>
+        </div>
+        <ul class="kharcha-list" id="editKharchaList"></ul>
+        <label class="field">
+          <span>Name / Description</span>
+          <select id="editKharchaName">
+            <option value="">Select Name / Description</option>
+            <option value="Phone Pay">Phone Pay</option>
+            <option value="Nagad Cash">Nagad Cash</option>
+            <option value="By Ajay ji">By Ajay ji</option>
+            <option value="Sonal">Sonal</option>
+            <option value="Pani">Pani</option>
+            <option value="__other__">Other (Type manually)</option>
+          </select>
+        </label>
+        <label class="field" id="editKharchaNameOtherWrap" hidden>
+          <span>Enter Name</span>
+          <input type="text" id="editKharchaNameOther" placeholder="Enter custom name">
+        </label>
+        <label class="field">
+          <span>Amount (₹)</span>
+          <input type="number" step="0.01" min="0" id="editKharchaAmount" placeholder="Enter Amount">
+        </label>
+        <button type="button" class="btn btn-ghost btn-block" id="btnAddEditKharcha" style="margin-bottom:16px;">＋ Add Kharcha</button>
+
+        <div class="edit-actions">
+          <button type="button" class="btn btn-danger" id="btnDeleteEntry">Delete Entry</button>
+          <button type="submit" class="btn btn-primary">Update Entry</button>
+        </div>
+      </form>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- MONTHLY REPORT ---------- -->
+  <section id="screen-monthly-report" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="dashboard">←</button>
+      <div class="topbar-title"><span class="eyebrow">Monthly Report</span></div>
+      <button class="icon-btn" id="reportExport">⬇️</button>
+    </header>
+    <div class="scroll-area">
+      <div class="month-switcher">
+        <button class="icon-btn" id="prevMonth">‹</button>
+        <strong id="reportMonthLabel">—</strong>
+        <button class="icon-btn" id="nextMonth">›</button>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card stat-fuel"><span class="stat-label">Total Fuel Sale (₹)</span><span class="stat-value" id="repFuelSale">₹0.00</span></div>
+        <div class="stat-card stat-kharcha"><span class="stat-label">Total Kharcha (₹)</span><span class="stat-value" id="repKharcha">₹0.00</span></div>
+      </div>
+      <div class="footline-card">
+        <div><span class="muted">Total Sale (Litre)</span><strong id="repLitre">0.000</strong></div>
+        <div><span class="muted">Total Balance (₹)</span><strong id="repBalance">₹0.00</strong></div>
+        <div><span class="muted">Difference (Fuel Sale − Kharcha)</span><strong id="repDifference">₹0.00</strong></div>
+      </div>
+
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead><tr><th>Date</th><th>MS Amount</th><th>HSD Amount</th><th>Total Sale (₹)</th><th>Total Sale (Ltr)</th></tr></thead>
+          <tbody id="reportTableBody"></tbody>
+          <tfoot><tr><td>Total</td><td></td><td></td><td id="reportTableTotal">0.00</td><td id="reportTableTotalLitre">0.000</td></tr></tfoot>
+        </table>
+      </div>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- SEARCH BY DATE ---------- -->
+  <section id="screen-search-by-date" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="history">←</button>
+      <div class="topbar-title"><span class="eyebrow">Search By Date</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <label class="field"><span>From Date</span><input type="date" id="searchFrom"></label>
+      <label class="field"><span>To Date</span><input type="date" id="searchTo"></label>
+      <button class="btn btn-primary btn-block" id="btnSearch">Search</button>
+
+      <div class="section-label">Results</div>
+      <ul class="history-list" id="searchResults"></ul>
+      <div class="empty-state" id="searchEmpty" hidden><p>No results</p><span>Try a different date range.</span></div>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- KHARCHA HISTORY ---------- -->
+  <section id="screen-kharcha-history" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-back="dashboard">←</button>
+      <div class="topbar-title"><span class="eyebrow">Kharcha History</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <div class="history-filter">
+        <input type="date" id="khFrom" aria-label="From date">
+        <input type="date" id="khTo" aria-label="To date">
+      </div>
+      <button class="btn btn-primary btn-block" id="btnKhFilter" style="margin-bottom:14px;">Filter</button>
+      <button class="btn btn-ghost btn-block" id="btnKhClear" style="margin-bottom:16px;">Show All / Clear</button>
+
+      <div class="footline-card single">
+        <div><span class="muted">Total Kharcha</span><strong id="khTotal">₹0.00</strong></div>
+      </div>
+
+      <div class="section-label">Entries (Grouped by Name)</div>
+      <div id="khList"></div>
+      <div class="empty-state" id="khEmpty" hidden>
+        <p>No kharcha entries</p>
+        <span>Kharcha added in Daily Entry will appear here.</span>
+      </div>
+      <div class="bottom-spacer"></div>
+    </div>
+  </section>
+
+  <!-- ---------- SETTINGS ---------- -->
+  <section id="screen-settings" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" data-goto="dashboard">☰</button>
+      <div class="topbar-title"><span class="eyebrow">Settings</span></div>
+      <span></span>
+    </header>
+    <div class="scroll-area">
+      <ul class="settings-list">
+        <li class="settings-item" id="stgGoogleAccount"><span class="si-icon">👤</span><span class="si-label" id="stgGoogleLabel">Sign in with Google</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgEmailAccount" hidden><span class="si-icon">✉️</span><span class="si-label">Sign in with Email</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgInstallApp"><span class="si-icon">⬇️</span><span class="si-label">Install App</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgBackup"><span class="si-icon">☁️</span><span class="si-label">Backup Data (file)</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgRestore"><span class="si-icon">🔄</span><span class="si-label">Restore Data (file)</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgCloudBackup"><span class="si-icon">🌐</span><span class="si-label">Backup to Google Cloud</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgCloudRestore"><span class="si-icon">📥</span><span class="si-label">Restore from Google Cloud</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" style="cursor:default;">
+          <span class="si-icon">🕒</span><span class="si-label muted" id="lastSyncedLabel">Not signed in</span>
+        </li>
+        <input type="file" id="restoreFile" accept="application/json" hidden>
+        <li class="settings-item" id="stgExportExcel"><span class="si-icon">📊</span><span class="si-label">Export Data (Excel)</span><span class="si-arrow">›</span></li>
+        <li class="settings-item" id="stgExportPdf"><span class="si-icon">📄</span><span class="si-label">Export Data (PDF)</span><span class="si-arrow">›</span></li>
+        <li class="settings-item">
+          <span class="si-icon">🌙</span><span class="si-label">Dark Mode</span>
+          <label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider"></span></label>
+        </li>
+        <li class="settings-item" id="stgAbout"><span class="si-icon">ℹ️</span><span class="si-label">About App</span><span class="si-arrow">›</span></li>
+        <li class="settings-item danger" id="stgLogout"><span class="si-icon">🚪</span><span class="si-label">Logout</span><span class="si-arrow">›</span></li>
+      </ul>
+      <div class="bottom-spacer"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item" data-goto="dashboard"><span>🏠</span>Dashboard</button>
+      <button class="nav-item" data-goto="daily-entry"><span>📝</span>Daily Entry</button>
+      <button class="nav-item" data-goto="history"><span>🕘</span>History</button>
+      <button class="nav-item" data-goto="monthly-report"><span>📊</span>Reports</button>
+      <button class="nav-item active" data-goto="settings"><span>⚙️</span>Settings</button>
+    </nav>
+  </section>
+
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+
+  <div class="modal" id="modalConfirm" hidden>
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p id="confirmBody" class="muted"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnConfirmNo" data-close>Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmYes">Confirm</button>
+    </div>
+  </div>
+
+  <div class="modal" id="modalEmailAuth" hidden>
+    <h3 id="emailAuthTitle">Sign in with Email</h3>
+    <label class="field"><span>Email</span><input type="email" id="emailAuthEmail" autocomplete="email" placeholder="you@example.com"></label>
+    <label class="field"><span>Password</span><input type="password" id="emailAuthPassword" autocomplete="current-password" placeholder="At least 6 characters"></label>
+    <label class="field" id="emailAuthConfirmRow" hidden><span>Confirm Password</span><input type="password" id="emailAuthConfirmPassword" autocomplete="new-password" placeholder="Re-enter your password"></label>
+    <p class="pin-error" id="emailAuthError" aria-live="polite" style="min-height:16px;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" id="btnEmailAuthSubmit">Sign In</button>
+    </div>
+    <p class="hint" style="margin-top:14px;">
+      <a href="#" id="emailAuthToggleMode">New here? Create an account</a>
+    </p>
+    <p class="hint">
+      <a href="#" id="emailAuthForgotPw">Forgot password?</a>
+    </p>
+  </div>
+
+  <div class="modal" id="modalAbout" hidden>
+    <h3>Pump Hisab App</h3>
+    <p class="muted">Version 1.0.0 — Offline-first daily accounting for petrol pumps. Data is always stored locally on this device. If you sign in with Google or Email, your data is also securely backed up to your account in the cloud.</p>
+    <div class="modal-actions"><button class="btn btn-primary" data-close>Close</button></div>
+  </div>
+
+  <div class="modal" id="modalDatePick" hidden>
+    <h3>Select Date</h3>
+    <label class="field"><input type="date" id="datePickInput"></label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" id="btnDatePickOk">Go</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ==============================================================
+   Pump Hisab — app.js
+   Offline-first Petrol Pump Daily Accounting logic.
+   Data always persists in LocalStorage first. Google sign-in +
+   Firestore are OPTIONAL — used only for cloud backup/restore.
+   ============================================================== */
+
+/* ==============================================================
+   FIREBASE SETUP
+   -------------------------------------------------------------
+   1. Go to https://console.firebase.google.com -> your project
+      -> Project settings (gear icon) -> General tab
+      -> "Your apps" -> Web app (</>)  -> copy the firebaseConfig
+      object shown there and paste it below, replacing the values.
+   2. In the Firebase console, open Authentication -> Sign-in method
+      -> enable "Google".
+   3. Make sure you've created a Firestore database (you're already
+      doing this — production mode is correct; rules are set below).
+   ============================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCDu9C8eXzW3yGBJf4b6VJ1L1ekZeMw3Tg",
+  authDomain: "hisab-kitab-d8504.firebaseapp.com",
+  projectId: "hisab-kitab-d8504",
+  storageBucket: "hisab-kitab-d8504.firebasestorage.app",
+  messagingSenderId: "989867629957",
+  appId: "1:989867629957:web:f60df16f774135ce11f8ec",
+  measurementId: "G-B7W9GX52ED"
+};
+
+let fbApp = null, fbAuth = null, fbDb = null, firebaseReady = false;
+let currentUser = null;
+let cloudUnsub = null;          // unsubscribe function for the live cloud listener
+let applyingRemoteData = false; // true while we're writing data that just came FROM the cloud (prevents echo loop)
+
+try{
+  if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY"){
+    fbApp = firebase.initializeApp(firebaseConfig);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    // Offline persistence: queue writes locally when there's no network and
+    // sync them automatically the moment connectivity comes back, instead of
+    // silently failing to back up while offline.
+    fbDb.enablePersistence({ synchronizeTabs:true }).catch((err)=>{
+      if(err.code === 'failed-precondition'){
+        console.warn('Offline persistence could not start in this tab (another tab already has it open).');
+      } else if(err.code === 'unimplemented'){
+        console.warn('This browser does not support offline persistence.');
+      }
+    });
+    firebaseReady = true;
+  } else {
+    console.warn('Firebase not configured yet — paste your firebaseConfig to enable Google login & cloud backup.');
+  }
+}catch(e){
+  console.error('Firebase init failed:', e);
+}
+
+function signInWithGoogle(){
+  if(!firebaseReady){
+    showSnackbar('Firebase not set up yet. Add your firebaseConfig in the code first.');
+    return;
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  const btn = document.getElementById('btnGoogleSignIn');
+  if(btn) btn.disabled = true;
+  fbAuth.signInWithPopup(provider)
+    .then(async (result) => {
+      currentUser = result.user;
+      showSnackbar('Signed in as ' + (currentUser.displayName || currentUser.email));
+      updateGoogleUI();
+      // Automatically bring in your data from any other device signed into this account.
+      await syncOnLogin();
+      startCloudListener();
+      unlockApp();
+    })
+    .catch((err) => {
+      console.error(err);
+      showSnackbar('Google sign-in failed: ' + (err.code || err.message));
+    })
+    .finally(() => { if(btn) btn.disabled = false; });
+}
+
+function signOutGoogle(){
+  if(!firebaseReady) return;
+  stopCloudListener();
+  fbAuth.signOut().then(() => {
+    currentUser = null;
+    updateGoogleUI();
+    showSnackbar('Signed out of Google');
+  });
+}
+
+function updateGoogleUI(){
+  const label = document.getElementById('stgGoogleLabel');
+  const btnHint = document.getElementById('googleUserHint');
+  const emailRow = document.getElementById('stgEmailAccount');
+  if(currentUser){
+    if(label) label.textContent = 'Signed in as ' + (currentUser.displayName || currentUser.email);
+    if(btnHint) btnHint.textContent = '';
+    if(emailRow) emailRow.hidden = true;
+  } else {
+    if(label) label.textContent = 'Sign in with Google';
+    if(btnHint) btnHint.textContent = '';
+    if(emailRow) emailRow.hidden = false;
+  }
+  updateLastSyncedLabel();
+}
+
+/* ---------------- Email / Password auth ---------------- */
+let emailAuthMode = 'signin'; // 'signin' | 'signup'
+
+function openEmailAuthModal(){
+  if(!firebaseReady){
+    showSnackbar('Firebase not set up yet. Add your firebaseConfig in the code first.');
+    return;
+  }
+  emailAuthMode = 'signin';
+  document.getElementById('emailAuthEmail').value = '';
+  document.getElementById('emailAuthPassword').value = '';
+  document.getElementById('emailAuthConfirmPassword').value = '';
+  document.getElementById('emailAuthError').textContent = '';
+  updateEmailAuthModalUI();
+  openModal('modalEmailAuth');
+}
+
+function updateEmailAuthModalUI(){
+  const title = document.getElementById('emailAuthTitle');
+  const submit = document.getElementById('btnEmailAuthSubmit');
+  const toggle = document.getElementById('emailAuthToggleMode');
+  const confirmRow = document.getElementById('emailAuthConfirmRow');
+  if(emailAuthMode === 'signin'){
+    title.textContent = 'Sign in with Email';
+    submit.textContent = 'Sign In';
+    toggle.textContent = 'New here? Create an account';
+    confirmRow.hidden = true;
+  } else {
+    title.textContent = 'Create Account';
+    submit.textContent = 'Create Account';
+    toggle.textContent = 'Already have an account? Sign in';
+    confirmRow.hidden = false;
+  }
+}
+
+document.getElementById('emailAuthToggleMode').addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  emailAuthMode = (emailAuthMode === 'signin') ? 'signup' : 'signin';
+  document.getElementById('emailAuthError').textContent = '';
+  updateEmailAuthModalUI();
+});
+
+document.getElementById('emailAuthForgotPw').addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  const email = document.getElementById('emailAuthEmail').value.trim();
+  const errEl = document.getElementById('emailAuthError');
+  if(!email){ errEl.textContent = 'Enter your email above first, then tap "Forgot password?" again.'; return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(()=>{ errEl.style.color = 'var(--md-secondary)'; errEl.textContent = 'Reset link sent — check your inbox.'; })
+    .catch((err)=>{ errEl.style.color = ''; errEl.textContent = friendlyAuthError(err); });
+});
+
+function friendlyAuthError(err){
+  const map = {
+    'auth/invalid-email':'That email address looks invalid.',
+    'auth/user-not-found':'No account found with that email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/email-already-in-use':'An account with that email already exists — try signing in instead.',
+    'auth/weak-password':'Password should be at least 6 characters.',
+    'auth/invalid-credential':'Incorrect email or password.',
+    'auth/too-many-requests':'Too many attempts — please wait a bit and try again.'
+  };
+  return map[err.code] || (err.message || 'Something went wrong. Please try again.');
+}
+
+document.getElementById('btnEmailAuthSubmit').addEventListener('click', async ()=>{
+  const email = document.getElementById('emailAuthEmail').value.trim();
+  const password = document.getElementById('emailAuthPassword').value;
+  const confirmPassword = document.getElementById('emailAuthConfirmPassword').value;
+  const errEl = document.getElementById('emailAuthError');
+  errEl.style.color = '';
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Please enter both email and password.'; return; }
+  if(emailAuthMode === 'signup' && password !== confirmPassword){
+    errEl.textContent = 'Passwords do not match.';
+    return;
+  }
+  const btn = document.getElementById('btnEmailAuthSubmit');
+  btn.disabled = true;
+  try{
+    let result;
+    if(emailAuthMode === 'signin'){
+      result = await fbAuth.signInWithEmailAndPassword(email, password);
+    } else {
+      result = await fbAuth.createUserWithEmailAndPassword(email, password);
+    }
+    currentUser = result.user;
+    updateGoogleUI();
+    closeModal();
+    showSnackbar((emailAuthMode === 'signin' ? 'Signed in as ' : 'Account created — signed in as ') + currentUser.email);
+    // Automatically bring in your data from any other device signed into this account.
+    await syncOnLogin();
+    startCloudListener();
+    unlockApp();
+  }catch(err){
+    console.error(err);
+    errEl.textContent = friendlyAuthError(err);
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+function cloudDocRef(){
+  if(!firebaseReady || !currentUser) return null;
+  return fbDb.collection('pumpHisabUsers').doc(currentUser.uid);
+}
+
+async function pushToCloud(silent){
+  const ref = cloudDocRef();
+  if(!ref){
+    if(!silent) showSnackbar('Sign in with Google first to back up to the cloud.');
+    return false;
+  }
+  try{
+    await ref.set({
+      data: DATA,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      email: currentUser.email || null,
+      name: currentUser.displayName || null
+    });
+    markSynced(Date.now());
+    if(!silent) showSnackbar('Backed up to Google Cloud ✓');
+    return true;
+  }catch(e){
+    console.error(e);
+    if(!silent) showSnackbar('Cloud backup failed: ' + e.message);
+    return false;
+  }
+}
+
+async function pullFromCloud(silent){
+  const ref = cloudDocRef();
+  if(!ref){
+    if(!silent) showSnackbar('Sign in with Google first to restore from the cloud.');
+    return false;
+  }
+  try{
+    const snap = await ref.get();
+    if(!snap.exists){
+      if(!silent) showSnackbar('No cloud backup found for this Google account.');
+      return false;
+    }
+    const cloud = snap.data();
+    if(cloud && cloud.data){
+      const cloudTime = (cloud.updatedAt && typeof cloud.updatedAt.toMillis === 'function') ? cloud.updatedAt.toMillis() : Date.now();
+      applyingRemoteData = true;
+      DATA = mergeCloudIntoLocal(cloud.data, true);
+      setLocalLastModified(Math.max(getLocalLastModified(), cloudTime));
+      saveData();
+      applyingRemoteData = false;
+      recomputeAll();
+      applyTheme();
+      markSynced(cloudTime);
+      if(!silent) showSnackbar('Restored from Google Cloud ✓');
+      if(sessionUnlocked) renderDashboard();
+      return true;
+    }
+    return false;
+  }catch(e){
+    console.error(e);
+    if(!silent) showSnackbar('Cloud restore failed: ' + e.message);
+    return false;
+  }
+}
+
+/* ----------------------------------------------------------------
+   Live cross-device sync
+   -------------------------------------------------------------
+   Keeps a real-time connection open to this account's cloud
+   document. The moment ANY device signed into the same account
+   saves new data, every other open device receives the update
+   within a second or two and refreshes its screen automatically —
+   no re-login, no manual restore needed.
+   ---------------------------------------------------------------- */
+function startCloudListener(){
+  const ref = cloudDocRef();
+  if(!ref) return;
+  if(cloudUnsub) cloudUnsub(); // don't stack multiple listeners
+  cloudUnsub = ref.onSnapshot((snap) => {
+    // Ignore the echo of our own pending write — only react to data
+    // that actually came back confirmed from the server.
+    if(snap.metadata.hasPendingWrites) return;
+    if(!snap.exists) return;
+    const cloud = snap.data();
+    if(!cloud || !cloud.data) return;
+    const cloudTime = (cloud.updatedAt && typeof cloud.updatedAt.toMillis === 'function') ? cloud.updatedAt.toMillis() : 0;
+    const localTime = getLocalLastModified();
+    markSynced(cloudTime || Date.now());
+    if(cloudTime <= localTime) return; // this device's copy is already the newest
+
+    applyingRemoteData = true;
+    DATA = mergeCloudIntoLocal(cloud.data, true);
+    setLocalLastModified(cloudTime);
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+    recomputeAll();
+    applyTheme();
+    if(sessionUnlocked) renderDashboard();
+    applyingRemoteData = false;
+    showSnackbar('Updated from another device ✓');
+  }, (err) => {
+    console.error('Live cloud sync error:', err);
+  });
+}
+
+function stopCloudListener(){
+  if(cloudUnsub){ cloudUnsub(); cloudUnsub = null; }
+}
+
+/* ----------------------------------------------------------------
+   Auto-sync on login
+   -------------------------------------------------------------
+   Called right after sign-in (and on app open, if already signed
+   in). Compares this device's last local save time with the
+   cloud's last updated time and automatically pulls the newer
+   copy — so logging into the same account on a second phone
+   brings the data across without any manual "Restore" tap.
+   Returns true if it pulled data down from the cloud.
+   ---------------------------------------------------------------- */
+const LAST_MODIFIED_KEY = 'pumpHisabLastModified';
+function getLocalLastModified(){
+  return Number(localStorage.getItem(LAST_MODIFIED_KEY)) || 0;
+}
+function setLocalLastModified(ts){
+  try{ localStorage.setItem(LAST_MODIFIED_KEY, String(ts)); }catch(e){}
+}
+
+/* ---------------- "Last synced" indicator ---------------- */
+const LAST_SYNCED_KEY = 'pumpHisabLastSyncedAt';
+function markSynced(ts){
+  try{ localStorage.setItem(LAST_SYNCED_KEY, String(ts||Date.now())); }catch(e){}
+  updateLastSyncedLabel();
+}
+function relativeTimeFrom(ts){
+  const diffSec = Math.max(0, Math.round((Date.now()-ts)/1000));
+  if(diffSec < 60) return 'just now';
+  const diffMin = Math.round(diffSec/60);
+  if(diffMin < 60) return diffMin + ' min ago';
+  const diffHr = Math.round(diffMin/60);
+  if(diffHr < 24) return diffHr + ' hr ago';
+  const diffDay = Math.round(diffHr/24);
+  return diffDay + ' day' + (diffDay>1?'s':'') + ' ago';
+}
+function updateLastSyncedLabel(){
+  const el = document.getElementById('lastSyncedLabel');
+  if(!el) return;
+  const raw = Number(localStorage.getItem(LAST_SYNCED_KEY)) || 0;
+  if(!currentUser){
+    el.textContent = 'Not signed in';
+  } else if(!raw){
+    el.textContent = 'Not synced yet';
+  } else {
+    el.textContent = 'Last synced: ' + relativeTimeFrom(raw);
+  }
+}
+setInterval(updateLastSyncedLabel, 30000);
+
+async function syncOnLogin(){
+  const ref = cloudDocRef();
+  if(!ref) return false;
+  try{
+    const snap = await ref.get();
+    const localHasData = Object.keys(DATA.entries || {}).length > 0;
+    if(!snap.exists){
+      // Nothing in the cloud yet for this account — push this device's data up
+      // (if any — entries OR a pin, not just a pin) so other devices can pick it up later.
+      if(localHasData) await pushToCloud(true);
+      return false;
+    }
+    const cloud = snap.data();
+    const cloudTime = (cloud.updatedAt && typeof cloud.updatedAt.toMillis === 'function') ? cloud.updatedAt.toMillis() : 0;
+    const localTime = getLocalLastModified();
+
+    if(!localHasData || cloudTime > localTime){
+      // The cloud copy is newer (or this is a fresh device) — pull it down automatically.
+      const pulled = await pullFromCloud(true);
+      if(pulled){
+        showSnackbar('Data synced from your account ✓');
+        return true;
+      }
+      return false;
+    } else if(localTime > cloudTime){
+      // This device has newer changes — push them up so other devices stay in sync.
+      await pushToCloud(true);
+    }
+    return false;
+  }catch(e){
+    console.error('Auto-sync failed:', e);
+    return false;
+  }
+}
+
+if(firebaseReady){
+  fbAuth.onAuthStateChanged((user) => {
+    currentUser = user;
+    updateGoogleUI();
+    if(user){
+      // Restored session (or fresh sign-in) — go straight into the app and
+      // pull in anything newer from another device signed into this account.
+      unlockApp();
+      syncOnLogin().then(()=> startCloudListener());
+    } else {
+      stopCloudListener();
+      lockApp();
+    }
+  });
+}
+
+const STORAGE_KEY = 'pumpHisabData_v1';
+
+/* ---------------- Default data shape ---------------- */
+function defaultData(){
+  return {
+    pin: null,           // legacy, no longer used — app lock is now Google/Email sign-in only
+    pinHash: null,       // legacy, no longer used
+    pinSalt: null,       // legacy, no longer used
+    entries: {},         // { 'YYYY-MM-DD': entryRecord }
+    settings: { darkMode:false },
+    meta: {
+      entryUpdatedAt: {}, // { 'YYYY-MM-DD': msTimestamp } — last edit time per entry, used to merge cloud + local safely
+      deletedAt: {}        // { 'YYYY-MM-DD': msTimestamp } — tombstones so a deletion isn't undone by an older cloud copy
+    }
+  };
+}
+
+let DATA = loadData();
+let computedCache = {};      // date -> computed totals, rebuilt by recomputeAll()
+let sessionUnlocked = false;
+let currentDraft = null;     // in-progress new entry (Daily Entry -> Kharcha -> Summary)
+let currentHistoryDate = null; // date currently open in History Details / Edit
+let reportMonthCursor = null;  // {y, m} for Monthly Report paging
+let confirmCallback = null;
+
+/* ---------------- Per-entry sync metadata ---------------- */
+function ensureMeta(){
+  if(!DATA.meta) DATA.meta = { entryUpdatedAt:{}, deletedAt:{} };
+  if(!DATA.meta.entryUpdatedAt) DATA.meta.entryUpdatedAt = {};
+  if(!DATA.meta.deletedAt) DATA.meta.deletedAt = {};
+}
+function stampEntryUpdated(date){
+  ensureMeta();
+  DATA.meta.entryUpdatedAt[date] = Date.now();
+  delete DATA.meta.deletedAt[date];
+}
+function stampEntryDeleted(date){
+  ensureMeta();
+  DATA.meta.deletedAt[date] = Date.now();
+  delete DATA.meta.entryUpdatedAt[date];
+}
+
+/* ----------------------------------------------------------------
+   Safe cloud merge
+   -------------------------------------------------------------
+   Two devices can go offline and both add/edit/delete different
+   dates before either syncs. Blindly replacing the whole local
+   DATA with whatever the cloud has (or vice-versa) silently
+   destroys one side's entries. Instead we merge date-by-date: for
+   every date that exists on either side, whichever side touched
+   it more recently (by its own entryUpdatedAt/deletedAt stamp)
+   wins for THAT date only — every other date is kept untouched.
+   pin/settings are single values (not per-key mergeable), so they
+   just follow whichever side is asked to "win" by the caller.
+   ---------------------------------------------------------------- */
+function mergeCloudIntoLocal(cloudData, preferCloudPinAndSettings){
+  ensureMeta();
+  const merged = Object.assign(defaultData(), DATA);
+  merged.entries = Object.assign({}, DATA.entries);
+  merged.meta = {
+    entryUpdatedAt: Object.assign({}, DATA.meta.entryUpdatedAt),
+    deletedAt: Object.assign({}, DATA.meta.deletedAt)
+  };
+
+  const cloudEntries = (cloudData && cloudData.entries) || {};
+  const cloudMeta = (cloudData && cloudData.meta) || { entryUpdatedAt:{}, deletedAt:{} };
+  const cloudUpdMap = cloudMeta.entryUpdatedAt || {};
+  const cloudDelMap = cloudMeta.deletedAt || {};
+
+  const allDates = new Set([
+    ...Object.keys(merged.entries),
+    ...Object.keys(cloudEntries),
+    ...Object.keys(merged.meta.deletedAt),
+    ...Object.keys(cloudDelMap)
+  ]);
+
+  allDates.forEach(date=>{
+    const localUpd = merged.meta.entryUpdatedAt[date] || 0;
+    const localDel = merged.meta.deletedAt[date] || 0;
+    const cloudUpd = cloudUpdMap[date] || 0;
+    const cloudDel = cloudDelMap[date] || 0;
+    const localLatest = Math.max(localUpd, localDel);
+    const cloudLatest = Math.max(cloudUpd, cloudDel);
+    if(cloudLatest > localLatest){
+      if(cloudDel >= cloudUpd){
+        delete merged.entries[date];
+        merged.meta.deletedAt[date] = cloudDel;
+        delete merged.meta.entryUpdatedAt[date];
+      } else {
+        merged.entries[date] = cloudEntries[date];
+        merged.meta.entryUpdatedAt[date] = cloudUpd;
+        delete merged.meta.deletedAt[date];
+      }
+    }
+    // else local already wins — it's already sitting in `merged` untouched.
+  });
+
+  if(preferCloudPinAndSettings && cloudData){
+    if(cloudData.pinHash || cloudData.pin){
+      merged.pin = cloudData.pin || null;
+      merged.pinHash = cloudData.pinHash || null;
+      merged.pinSalt = cloudData.pinSalt || null;
+    }
+    if(cloudData.settings) merged.settings = cloudData.settings;
+  }
+  return merged;
+}
+
+/* ---------------- PIN hashing ----------------
+   The PIN used to be saved as plain text (locally and in the cloud
+   backup). It's only an app-lock, not a bank password, so the risk
+   is low — but there's no reason to store it in the clear when a
+   salted hash is just as easy to check against. */
+function randomHex(byteLen){
+  const arr = new Uint8Array(byteLen);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+}
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2,'0')).join('');
+}
+function hasPinSet(){
+  return !!(DATA.pinHash || DATA.pin);
+}
+async function verifyPin(enteredPin){
+  if(DATA.pinHash && DATA.pinSalt){
+    return (await sha256Hex(DATA.pinSalt + ':' + enteredPin)) === DATA.pinHash;
+  }
+  if(DATA.pin) return enteredPin === DATA.pin; // legacy plain-text save, migrated on next successful check
+  return false;
+}
+async function setPin(newPin){
+  const salt = randomHex(16);
+  DATA.pinSalt = salt;
+  DATA.pinHash = await sha256Hex(salt + ':' + newPin);
+  DATA.pin = null; // clear any legacy plain-text value
+}
+
+/* ---------------- Storage ---------------- */
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultData();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultData(), parsed);
+  }catch(e){
+    console.error('Failed to load data, starting fresh.', e);
+    return defaultData();
+  }
+}
+let cloudSyncTimer = null;
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+    setLocalLastModified(Date.now());
+  }catch(e){
+    showSnackbar('Storage error: could not save data.');
+    console.error(e);
+  }
+  // Auto cloud-sync (debounced) when signed in with Google — silent, best-effort.
+  // Skip this when the data we just saved came FROM the cloud (applyingRemoteData) —
+  // otherwise we'd immediately push it right back up in a pointless loop.
+  if(firebaseReady && currentUser && !applyingRemoteData){
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(() => pushToCloud(true), 1500);
+  }
+}
+
+// If the user backgrounds/closes the app right after saving, don't lose the
+// pending debounced sync — push whatever's queued immediately instead.
+function flushPendingCloudSync(){
+  if(cloudSyncTimer){
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = null;
+    if(firebaseReady && currentUser && !applyingRemoteData) pushToCloud(true);
+  }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') flushPendingCloudSync();
+});
+window.addEventListener('pagehide', flushPendingCloudSync);
+
+/* ---------------- Date helpers ---------------- */
+function todayISO(){
+  const d = new Date();
+  return isoFromDate(d);
+}
+function isoFromDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function addDaysISO(iso, n){
+  const d = new Date(iso+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return isoFromDate(d);
+}
+function formatDateLong(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', weekday:'long' });
+}
+function formatDateShort(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+function formatDateDDMMYYYY(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${d}-${m}-${y}`;
+}
+function weekdayShort(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-IN',{weekday:'short'});
+}
+function sortedDates(){ return Object.keys(DATA.entries).sort(); }
+
+/* ---------------- Currency formatting (Indian grouping) ---------------- */
+function fmt2(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtINR(n){ return '₹' + fmt2(n); }
+function fmt3(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-IN', { minimumFractionDigits:3, maximumFractionDigits:3 });
+}
+
+/* ==============================================================
+   Core accounting engine
+   Walks all saved entries in chronological order and derives:
+   opening readings (auto = previous day's closing), sale litres,
+   fuel amounts, kharcha totals, and running balance.
+   ============================================================== */
+function recomputeAll(){
+  computedCache = {};
+  const dates = sortedDates();
+  let prevClose = null;       // {msN1,msN2,hsdN1,hsdN2}
+  let prevBalanceCarry = 0;
+
+  dates.forEach((date, idx) => {
+    const e = DATA.entries[date];
+    const opening = (idx === 0)
+      ? (e.manualOpening || {msN1:0,msN2:0,hsdN1:0,hsdN2:0})
+      : prevClose;
+    const previousBalance = (idx === 0)
+      ? (e.manualPrevBalance || 0)
+      : prevBalanceCarry;
+
+    const msN1Sale = Math.max(0, (e.ms.n1.close||0) - (opening.msN1||0));
+    const msN2Sale = Math.max(0, (e.ms.n2.close||0) - (opening.msN2||0));
+    const hsdN1Sale = Math.max(0, (e.hsd.n1.close||0) - (opening.hsdN1||0));
+    const hsdN2Sale = Math.max(0, (e.hsd.n2.close||0) - (opening.hsdN2||0));
+
+    const msTotalSale = msN1Sale + msN2Sale;
+    const hsdTotalSale = hsdN1Sale + hsdN2Sale;
+    const msAmount = msTotalSale * (e.msRate||0);
+    const hsdAmount = hsdTotalSale * (e.hsdRate||0);
+    const totalFuelAmount = msAmount + hsdAmount;
+    const totalLitre = msTotalSale + hsdTotalSale;
+    const totalKharcha = (e.kharchas||[]).reduce((s,c)=>s+(Number(c.amount)||0),0);
+    const totalBalance = previousBalance + totalFuelAmount - totalKharcha;
+
+    computedCache[date] = {
+      date, opening,
+      msN1Sale, msN2Sale, hsdN1Sale, hsdN2Sale,
+      msTotalSale, hsdTotalSale, msAmount, hsdAmount,
+      totalFuelAmount, totalLitre, totalKharcha,
+      previousBalance, totalBalance,
+      msRate: e.msRate, hsdRate: e.hsdRate,
+      kharchas: e.kharchas||[]
+    };
+
+    prevClose = { msN1:e.ms.n1.close, msN2:e.ms.n2.close, hsdN1:e.hsd.n1.close, hsdN2:e.hsd.n2.close };
+    prevBalanceCarry = totalBalance;
+  });
+}
+
+/** Opening readings + previous balance a NEW entry on `date` would inherit,
+ *  based on the latest existing entry strictly before `date`. */
+function inheritedStateFor(date){
+  const priorDates = sortedDates().filter(d => d < date);
+  if(priorDates.length === 0){
+    return { opening:{msN1:0,msN2:0,hsdN1:0,hsdN2:0}, previousBalance:0, isFirstEver:true };
+  }
+  const last = priorDates[priorDates.length-1];
+  const c = computedCache[last];
+  return {
+    opening: { msN1:DATA.entries[last].ms.n1.close, msN2:DATA.entries[last].ms.n2.close,
+               hsdN1:DATA.entries[last].hsd.n1.close, hsdN2:DATA.entries[last].hsd.n2.close },
+    previousBalance: c.totalBalance,
+    isFirstEver:false
+  };
+}
+function mostRecentRate(){
+  const dates = sortedDates();
+  if(dates.length===0) return {msRate:0, hsdRate:0};
+  const last = DATA.entries[dates[dates.length-1]];
+  return { msRate:last.msRate, hsdRate:last.hsdRate };
+}
+
+recomputeAll();
+
+/* ==============================================================
+   Navigation
+   ============================================================== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const target = document.getElementById('screen-'+id);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.toggle('active', n.dataset.goto === id);
+  });
+  window.scrollTo(0,0);
+}
+
+document.addEventListener('click', (ev)=>{
+  const gotoBtn = ev.target.closest('[data-goto]');
+  if(gotoBtn){
+    const id = gotoBtn.dataset.goto;
+    routeTo(id);
+    return;
+  }
+  const backBtn = ev.target.closest('[data-back]');
+  if(backBtn){
+    routeTo(backBtn.dataset.back);
+    return;
+  }
+});
+
+function routeTo(id){
+  if(id === 'daily-entry') openDailyEntry();
+  else if(id === 'dashboard') renderDashboard();
+  else if(id === 'history') renderHistory();
+  else if(id === 'kharcha-history') renderKharchaHistory();
+  else if(id === 'monthly-report') openMonthlyReport();
+  else if(id === 'search-by-date') { /* leave fields as-is */ }
+  else if(id === 'settings') { /* static */ }
+  else if(id === 'history-details') renderHistoryDetails(currentHistoryDate);
+  showScreen(id);
+}
+
+/* ==============================================================
+   Snackbar / toast
+   ============================================================== */
+let snackTimer=null;
+function showSnackbar(msg){
+  const el = document.getElementById('snackbar');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(()=>el.classList.remove('show'), 2400);
+}
+
+/* ==============================================================
+   Modal helpers
+   ============================================================== */
+function openModal(id){
+  document.getElementById('modalBackdrop').hidden = false;
+  document.querySelectorAll('.modal').forEach(m=>m.hidden = (m.id!==id));
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').hidden = true;
+}
+document.addEventListener('click', (ev)=>{
+  if(ev.target.id === 'modalBackdrop' || ev.target.closest('[data-close]')) closeModal();
+});
+let confirmCancelCallback = null;
+function askConfirm(title, body, onYes, onCancel){
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmBody').textContent = body;
+  confirmCallback = onYes;
+  confirmCancelCallback = onCancel || null;
+  openModal('modalConfirm');
+}
+document.getElementById('btnConfirmYes').addEventListener('click', ()=>{
+  closeModal();
+  if(confirmCallback) confirmCallback();
+  confirmCallback = null;
+  confirmCancelCallback = null;
+});
+document.getElementById('btnConfirmNo').addEventListener('click', ()=>{
+  if(confirmCancelCallback) confirmCancelCallback();
+  confirmCallback = null;
+  confirmCancelCallback = null;
+});
+
+/* ==============================================================
+   LOGIN SCREEN
+   ============================================================== */
+function unlockApp(){
+  sessionUnlocked = true;
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('appShell').hidden = false;
+  applyTheme();
+  renderDashboard();
+  showScreen('dashboard');
+}
+function lockApp(){
+  sessionUnlocked = false;
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('screen-login').classList.add('active');
+}
+document.getElementById('btnLogout2').addEventListener('click', ()=>{
+  showSnackbar('Notifications: all caught up ✓');
+});
+
+/* ==============================================================
+   DASHBOARD
+   ============================================================== */
+function renderDashboard(){
+  document.getElementById('dashDateLabel').textContent = formatDateLong(todayISO());
+  const dates = sortedDates();
+  if(dates.length === 0){
+    document.getElementById('dashFuelSale').textContent = '₹0.00';
+    document.getElementById('dashKharcha').textContent = '₹0.00';
+    document.getElementById('dashBalance').textContent = '₹0.00';
+    document.getElementById('dashPrevBal').textContent = '₹0.00';
+    document.getElementById('dashDifference').textContent = '₹0.00';
+    document.getElementById('dashLastEntry').textContent = 'No entries yet';
+    setGauge(0);
+    return;
+  }
+  const latest = dates[dates.length-1];
+  const c = computedCache[latest];
+  document.getElementById('dashFuelSale').textContent = fmtINR(c.totalFuelAmount);
+  document.getElementById('dashKharcha').textContent = fmtINR(c.totalKharcha);
+  document.getElementById('dashBalance').textContent = fmtINR(c.totalBalance);
+  document.getElementById('dashPrevBal').textContent = fmtINR(c.previousBalance);
+  document.getElementById('dashDifference').textContent = fmtINR(c.totalFuelAmount - c.totalKharcha);
+  document.getElementById('dashLastEntry').textContent = formatDateDDMMYYYY(latest);
+  const ratio = c.totalFuelAmount > 0 ? (c.totalKharcha / c.totalFuelAmount) : 0;
+  setGauge(ratio);
+}
+function setGauge(ratio){
+  ratio = Math.max(0, Math.min(1, ratio));
+  const ARC = 173; // approx path length
+  document.getElementById('gaugeFill').style.strokeDashoffset = String(ARC - ARC*ratio);
+  document.getElementById('gaugeNeedle').style.transform = `translateX(-50%) rotate(${(ratio*180)-90}deg)`;
+}
+
+/* ==============================================================
+   DAILY ENTRY (multi-step: readings -> kharchas -> summary)
+   ============================================================== */
+function defaultEntryDate(){
+  const dates = sortedDates();
+  if(dates.length===0) return todayISO();
+  const last = dates[dates.length-1];
+  return last >= todayISO() ? last : todayISO();
+}
+
+function openDailyEntry(dateOverride){
+  const date = dateOverride || defaultEntryDate();
+  const existing = DATA.entries[date];
+  const inherited = inheritedStateFor(date);
+  const rateHint = mostRecentRate();
+
+  currentDraft = {
+    date,
+    isFirstEver: inherited.isFirstEver && !existing,
+    opening: existing ? (inherited.isFirstEver ? (existing.manualOpening||{msN1:0,msN2:0,hsdN1:0,hsdN2:0}) : inherited.opening) : inherited.opening,
+    previousBalance: existing && inherited.isFirstEver ? (existing.manualPrevBalance||0) : inherited.previousBalance,
+    msRate: existing ? existing.msRate : (rateHint.msRate||''),
+    hsdRate: existing ? existing.hsdRate : (rateHint.hsdRate||''),
+    msN1Close: existing ? existing.ms.n1.close : '',
+    msN2Close: existing ? existing.ms.n2.close : '',
+    hsdN1Close: existing ? existing.hsd.n1.close : '',
+    hsdN2Close: existing ? existing.hsd.n2.close : '',
+    kharchas: existing ? JSON.parse(JSON.stringify(existing.kharchas||[])) : []
+  };
+
+  document.getElementById('entryDate').value = date;
+  document.getElementById('entryDateLabel').textContent = formatDateLong(date);
+
+  const openingEditable = currentDraft.isFirstEver;
+  document.getElementById('entryPrevBalance').readOnly = !openingEditable;
+  document.getElementById('entryPrevBalance').classList.toggle('ro', !openingEditable);
+  document.getElementById('entryPrevBalance').value = currentDraft.previousBalance || 0;
+  ['msN1Open','msN2Open','hsdN1Open','hsdN2Open'].forEach(id=>{
+    document.getElementById(id).readOnly = !openingEditable;
+    document.getElementById(id).classList.toggle('ro', !openingEditable);
+  });
+  document.getElementById('msN1Open').value = currentDraft.opening.msN1 ?? 0;
+  document.getElementById('msN2Open').value = currentDraft.opening.msN2 ?? 0;
+  document.getElementById('hsdN1Open').value = currentDraft.opening.hsdN1 ?? 0;
+  document.getElementById('hsdN2Open').value = currentDraft.opening.hsdN2 ?? 0;
+
+  document.getElementById('msRate').value = currentDraft.msRate;
+  document.getElementById('hsdRate').value = currentDraft.hsdRate;
+  document.getElementById('msN1Close').value = currentDraft.msN1Close;
+  document.getElementById('msN2Close').value = currentDraft.msN2Close;
+  document.getElementById('hsdN1Close').value = currentDraft.hsdN1Close;
+  document.getElementById('hsdN2Close').value = currentDraft.hsdN2Close;
+
+  recalcEntryFormPreview();
+}
+
+function readEntryFormInto(draft){
+  draft.previousBalance = parseFloat(document.getElementById('entryPrevBalance').value)||0;
+  draft.opening.msN1 = parseFloat(document.getElementById('msN1Open').value)||0;
+  draft.opening.msN2 = parseFloat(document.getElementById('msN2Open').value)||0;
+  draft.opening.hsdN1 = parseFloat(document.getElementById('hsdN1Open').value)||0;
+  draft.opening.hsdN2 = parseFloat(document.getElementById('hsdN2Open').value)||0;
+  draft.msRate = parseFloat(document.getElementById('msRate').value)||0;
+  draft.hsdRate = parseFloat(document.getElementById('hsdRate').value)||0;
+  draft.msN1Close = parseFloat(document.getElementById('msN1Close').value)||0;
+  draft.msN2Close = parseFloat(document.getElementById('msN2Close').value)||0;
+  draft.hsdN1Close = parseFloat(document.getElementById('hsdN1Close').value)||0;
+  draft.hsdN2Close = parseFloat(document.getElementById('hsdN2Close').value)||0;
+}
+
+function recalcEntryFormPreview(){
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const msN1Sale = Math.max(0, g('msN1Close') - g('msN1Open'));
+  const msN2Sale = Math.max(0, g('msN2Close') - g('msN2Open'));
+  const hsdN1Sale = Math.max(0, g('hsdN1Close') - g('hsdN1Open'));
+  const hsdN2Sale = Math.max(0, g('hsdN2Close') - g('hsdN2Open'));
+  const msTotal = msN1Sale + msN2Sale;
+  const hsdTotal = hsdN1Sale + hsdN2Sale;
+  const msAmount = msTotal * g('msRate');
+  const hsdAmount = hsdTotal * g('hsdRate');
+
+  document.getElementById('msN1Sale').textContent = fmt3(msN1Sale);
+  document.getElementById('msN2Sale').textContent = fmt3(msN2Sale);
+  document.getElementById('msTotalSale').textContent = fmt3(msTotal);
+  document.getElementById('msAmount').textContent = fmt2(msAmount);
+
+  document.getElementById('hsdN1Sale').textContent = fmt3(hsdN1Sale);
+  document.getElementById('hsdN2Sale').textContent = fmt3(hsdN2Sale);
+  document.getElementById('hsdTotalSale').textContent = fmt3(hsdTotal);
+  document.getElementById('hsdAmount').textContent = fmt2(hsdAmount);
+
+  document.getElementById('grandLitre').textContent = fmt3(msTotal+hsdTotal);
+  document.getElementById('grandAmount').textContent = fmt2(msAmount+hsdAmount);
+}
+document.getElementById('entryForm').addEventListener('input', recalcEntryFormPreview);
+
+document.getElementById('entryForm').addEventListener('submit', (ev)=>{
+  ev.preventDefault();
+  // basic validation: closing >= opening
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const pairs = [['msN1Open','msN1Close'],['msN2Open','msN2Close'],['hsdN1Open','hsdN1Close'],['hsdN2Open','hsdN2Close']];
+  for(const [o,c] of pairs){
+    if(g(c) < g(o)){
+      showSnackbar('Closing reading cannot be less than opening reading.');
+      document.getElementById(c).classList.add('invalid');
+      return;
+    }
+    document.getElementById(c).classList.remove('invalid');
+  }
+  readEntryFormInto(currentDraft);
+  renderKharchaScreen();
+  showScreen('add-kharcha');
+});
+
+document.getElementById('entryDateBtn').addEventListener('click', ()=>{
+  document.getElementById('datePickInput').value = document.getElementById('entryDate').value || todayISO();
+  openModal('modalDatePick');
+  document.getElementById('btnDatePickOk').onclick = ()=>{
+    const v = document.getElementById('datePickInput').value;
+    if(v){ closeModal(); openDailyEntry(v); }
+  };
+});
+document.getElementById('dashDateBtn').addEventListener('click', ()=>{
+  showSnackbar('Showing latest saved entry. Use Daily Entry to add today\u2019s data.');
+});
+
+/* ---------- Kharcha Name select helpers (preset list + custom "Other") ---------- */
+function getKharchaNameValue(selectId, otherId){
+  const sel = document.getElementById(selectId).value;
+  if(sel === '__other__'){
+    return document.getElementById(otherId).value.trim();
+  }
+  return sel;
+}
+function setKharchaSelectValue(selectId, otherWrapId, otherId, value){
+  const select = document.getElementById(selectId);
+  const presetValues = Array.from(select.options).map(o=>o.value);
+  if(value && presetValues.includes(value)){
+    select.value = value;
+    document.getElementById(otherWrapId).hidden = true;
+    document.getElementById(otherId).value = '';
+  } else if(value){
+    select.value = '__other__';
+    document.getElementById(otherWrapId).hidden = false;
+    document.getElementById(otherId).value = value;
+  } else {
+    select.value = '';
+    document.getElementById(otherWrapId).hidden = true;
+    document.getElementById(otherId).value = '';
+  }
+}
+document.getElementById('kharchaName').addEventListener('change', (ev)=>{
+  document.getElementById('kharchaNameOtherWrap').hidden = ev.target.value !== '__other__';
+});
+document.getElementById('editKharchaName').addEventListener('change', (ev)=>{
+  document.getElementById('editKharchaNameOtherWrap').hidden = ev.target.value !== '__other__';
+});
+
+/* ---------- Add Kharcha Entry ---------- */
+function renderKharchaScreen(){
+  const list = document.getElementById('kharchaList');
+  list.innerHTML = '';
+  let total = 0;
+  currentDraft.kharchas.forEach((c, idx)=>{
+    total += Number(c.amount)||0;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div><span class="kharcha-item-name">${escapeHtml(c.name)}</span><span class="kharcha-item-amt">${fmtINR(c.amount)}</span></div>
+      <div class="kharcha-actions">
+        <button class="edit" data-idx="${idx}" aria-label="Edit">✎</button>
+        <button class="del" data-idx="${idx}" aria-label="Delete">🗑</button>
+      </div>`;
+    list.appendChild(li);
+  });
+  document.getElementById('kharchaTotalAmt').textContent = fmtINR(total);
+}
+document.getElementById('kharchaList').addEventListener('click', (ev)=>{
+  const editBtn = ev.target.closest('.edit');
+  const delBtn = ev.target.closest('.del');
+  if(editBtn){
+    const idx = +editBtn.dataset.idx;
+    const item = currentDraft.kharchas[idx];
+    setKharchaSelectValue('kharchaName', 'kharchaNameOtherWrap', 'kharchaNameOther', item.name);
+    document.getElementById('kharchaAmount').value = item.amount;
+    currentDraft.kharchas.splice(idx,1);
+    renderKharchaScreen();
+  } else if(delBtn){
+    const idx = +delBtn.dataset.idx;
+    currentDraft.kharchas.splice(idx,1);
+    renderKharchaScreen();
+  }
+});
+document.getElementById('kharchaForm').addEventListener('submit', (ev)=>{
+  ev.preventDefault();
+  const name = getKharchaNameValue('kharchaName', 'kharchaNameOther');
+  const amount = parseFloat(document.getElementById('kharchaAmount').value);
+  if(!name || isNaN(amount) || amount < 0){
+    showSnackbar('Enter a valid name and amount.');
+    return;
+  }
+  currentDraft.kharchas.push({ name, amount });
+  document.getElementById('kharchaForm').reset();
+  document.getElementById('kharchaNameOtherWrap').hidden = true;
+  renderKharchaScreen();
+});
+document.getElementById('btnGoSummary').addEventListener('click', ()=>{
+  renderSummary();
+  showScreen('summary');
+});
+
+/* ---------- Summary ---------- */
+function draftComputed(){
+  const d = currentDraft;
+  const msN1Sale = Math.max(0, d.msN1Close - d.opening.msN1);
+  const msN2Sale = Math.max(0, d.msN2Close - d.opening.msN2);
+  const hsdN1Sale = Math.max(0, d.hsdN1Close - d.opening.hsdN1);
+  const hsdN2Sale = Math.max(0, d.hsdN2Close - d.opening.hsdN2);
+  const msTotalSale = msN1Sale+msN2Sale, hsdTotalSale = hsdN1Sale+hsdN2Sale;
+  const msAmount = msTotalSale*d.msRate, hsdAmount = hsdTotalSale*d.hsdRate;
+  const totalFuelAmount = msAmount+hsdAmount;
+  const totalKharcha = d.kharchas.reduce((s,c)=>s+(Number(c.amount)||0),0);
+  const totalBalance = d.previousBalance + totalFuelAmount - totalKharcha;
+  return { msAmount, hsdAmount, totalFuelAmount, totalKharcha, totalBalance, previousBalance:d.previousBalance };
+}
+function renderSummary(){
+  document.getElementById('summaryDateLabel').textContent = formatDateLong(currentDraft.date);
+  const c = draftComputed();
+  document.getElementById('sumMsAmount').textContent = fmt2(c.msAmount);
+  document.getElementById('sumHsdAmount').textContent = fmt2(c.hsdAmount);
+  document.getElementById('sumFuelTotal').textContent = fmt2(c.totalFuelAmount);
+  document.getElementById('sumKharchaTotal').textContent = fmt2(c.totalKharcha);
+  document.getElementById('sumPrevBal').textContent = fmt2(c.previousBalance);
+  document.getElementById('sumTotalBal').textContent = fmt2(c.totalBalance);
+  document.getElementById('sumDifference').textContent = fmt2(c.totalFuelAmount - c.totalKharcha);
+}
+document.getElementById('btnSaveEntry').addEventListener('click', ()=>{
+  const d = currentDraft;
+  const record = {
+    msRate: d.msRate, hsdRate: d.hsdRate,
+    ms: { n1:{close:d.msN1Close}, n2:{close:d.msN2Close} },
+    hsd: { n1:{close:d.hsdN1Close}, n2:{close:d.hsdN2Close} },
+    kharchas: d.kharchas
+  };
+  if(d.isFirstEver){
+    record.manualOpening = { msN1:d.opening.msN1, msN2:d.opening.msN2, hsdN1:d.opening.hsdN1, hsdN2:d.opening.hsdN2 };
+    record.manualPrevBalance = d.previousBalance;
+  }
+  DATA.entries[d.date] = record;
+  stampEntryUpdated(d.date);
+  saveData();
+  recomputeAll();
+  showSnackbar('Entry saved successfully ✓');
+  currentDraft = null;
+  renderDashboard();
+  routeTo('dashboard');
+});
+
+/* ==============================================================
+   HISTORY LIST
+   ============================================================== */
+function renderHistory(){
+  const filterVal = document.getElementById('historyDateFilter').value;
+  document.getElementById('historyDateClear').hidden = !filterVal;
+  let dates = sortedDates().reverse();
+  if(filterVal) dates = dates.filter(d => d === filterVal);
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  const empty = document.getElementById('historyEmpty');
+  empty.hidden = dates.length>0;
+  empty.querySelector('span').textContent = filterVal
+    ? 'No entry found for the selected date.'
+    : 'Save a daily entry to see it appear here.';
+  dates.forEach(date=>{
+    const c = computedCache[date];
+    const li = document.createElement('li');
+    li.innerHTML = `<div><div class="hl-date">${formatDateShort(date)} (${weekdayShort(date)})</div>
+      <div class="hl-sub">Fuel Sale: ${fmtINR(c.totalFuelAmount)}</div></div>
+      <div class="hl-amt">${fmtINR(c.totalBalance)}</div>`;
+    li.addEventListener('click', ()=>{ currentHistoryDate = date; renderHistoryDetails(date); showScreen('history-details'); });
+    list.appendChild(li);
+  });
+}
+document.getElementById('historyDateFilter').addEventListener('change', renderHistory);
+document.getElementById('historyDateClear').addEventListener('click', ()=>{
+  document.getElementById('historyDateFilter').value = '';
+  renderHistory();
+});
+
+/* ==============================================================
+   KHARCHA HISTORY (all kharcha entries across all dates)
+   ============================================================== */
+function renderKharchaHistory(){
+  const from = document.getElementById('khFrom').value;
+  const to = document.getElementById('khTo').value;
+  const dates = sortedDates().filter(d => (!from || d>=from) && (!to || d<=to)).reverse();
+
+  const rows = [];
+  dates.forEach(date=>{
+    const e = DATA.entries[date];
+    (e.kharchas||[]).forEach(k=>{
+      rows.push({ date, name: (k.name||'').trim() || 'Untitled', amount: Number(k.amount)||0 });
+    });
+  });
+
+  const total = rows.reduce((s,r)=>s+r.amount,0);
+  document.getElementById('khTotal').textContent = fmtINR(total);
+
+  // Group by name (case-insensitive), preserving newest-first date order within each group
+  const groups = {};
+  const order = [];
+  rows.forEach(r=>{
+    const key = r.name.toLowerCase();
+    if(!groups[key]){ groups[key] = { name: r.name, items: [], total: 0 }; order.push(key); }
+    groups[key].items.push(r);
+    groups[key].total += r.amount;
+  });
+  const groupList = order.map(k=>groups[k]).sort((a,b)=>b.total-a.total);
+
+  const list = document.getElementById('khList');
+  list.innerHTML = '';
+  document.getElementById('khEmpty').hidden = rows.length>0;
+  groupList.forEach(g=>{
+    const card = document.createElement('div');
+    card.className = 'kh-group';
+    const rowsHtml = g.items.map(r=>`
+      <div class="kh-row" data-date="${r.date}">
+        <span class="kh-row-date">${formatDateShort(r.date)} (${weekdayShort(r.date)})</span>
+        <span class="kh-row-amt">${fmtINR(r.amount)}</span>
+      </div>`).join('');
+    card.innerHTML = `
+      <div class="kh-group-head"><span>${escapeHtml(g.name)}</span><span class="kh-count">${g.items.length} entr${g.items.length>1?'ies':'y'}</span></div>
+      <div class="kh-group-rows">${rowsHtml}</div>
+      <div class="kh-group-total"><span>Total</span><span>${fmtINR(g.total)}</span></div>`;
+    card.querySelectorAll('.kh-row').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const d = row.dataset.date;
+        currentHistoryDate = d; renderHistoryDetails(d); showScreen('history-details');
+      });
+    });
+    list.appendChild(card);
+  });
+}
+document.getElementById('btnKhFilter').addEventListener('click', renderKharchaHistory);
+document.getElementById('btnKhClear').addEventListener('click', ()=>{
+  document.getElementById('khFrom').value = '';
+  document.getElementById('khTo').value = '';
+  renderKharchaHistory();
+});
+
+/* ==============================================================
+   HISTORY DETAILS
+   ============================================================== */
+function renderHistoryDetails(date){
+  if(!date) return;
+  const c = computedCache[date];
+  const e = DATA.entries[date];
+  if(!c || !e) return;
+  const body = document.getElementById('historyDetailsBody');
+  const kharchaRows = (e.kharchas||[]).map(cc=>`<div class="detail-row"><span>${escapeHtml(cc.name)}</span><strong>${fmtINR(cc.amount)}</strong></div>`).join('') || '<div class="detail-row"><span>No kharcha entries</span></div>';
+  body.innerHTML = `
+    <div class="date-banner">${formatDateLong(date)}</div>
+
+    <div class="detail-section">
+      <div class="detail-heading"><span class="dot dot-ms"></span>MS (Petrol)</div>
+      <div class="detail-row"><span>MS Rate (₹ / Litre)</span><strong>${fmt2(c.msRate)}</strong></div>
+      <div class="detail-row"><span>MS N1 Sale (Litre)</span><strong>${fmt3(c.msN1Sale)}</strong></div>
+      <div class="detail-row"><span>MS N2 Sale (Litre)</span><strong>${fmt3(c.msN2Sale)}</strong></div>
+      <div class="detail-row"><span>Total MS Sale (Litre)</span><strong>${fmt3(c.msTotalSale)}</strong></div>
+      <div class="detail-row"><span>MS Amount (₹)</span><strong>${fmt2(c.msAmount)}</strong></div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-heading"><span class="dot dot-hsd"></span>HSD (Diesel)</div>
+      <div class="detail-row"><span>HSD Rate (₹ / Litre)</span><strong>${fmt2(c.hsdRate)}</strong></div>
+      <div class="detail-row"><span>HSD N1 Sale (Litre)</span><strong>${fmt3(c.hsdN1Sale)}</strong></div>
+      <div class="detail-row"><span>HSD N2 Sale (Litre)</span><strong>${fmt3(c.hsdN2Sale)}</strong></div>
+      <div class="detail-row"><span>Total HSD Sale (Litre)</span><strong>${fmt3(c.hsdTotalSale)}</strong></div>
+      <div class="detail-row"><span>HSD Amount (₹)</span><strong>${fmt2(c.hsdAmount)}</strong></div>
+    </div>
+    <hr class="divider">
+    <div class="detail-row"><span><strong>Total Fuel Sale Amount (₹)</strong></span><strong>${fmt2(c.totalFuelAmount)}</strong></div>
+
+    <div class="detail-section" style="margin-top:14px;">
+      <div class="detail-heading">Kharcha Entries</div>
+      ${kharchaRows}
+      <div class="detail-row"><span><strong>Total Kharcha (₹)</strong></span><strong>${fmt2(c.totalKharcha)}</strong></div>
+    </div>
+    <hr class="divider">
+    <div class="detail-row"><span>Previous Balance</span><strong>${fmt2(c.previousBalance)}</strong></div>
+    <div class="detail-row"><span><strong>Total Balance (₹)</strong></span><strong>${fmt2(c.totalBalance)}</strong></div>
+    <div class="detail-row"><span><strong>Difference (Fuel Sale − Kharcha) (₹)</strong></span><strong>${fmt2(c.totalFuelAmount - c.totalKharcha)}</strong></div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:18px;" id="btnEditFromDetails">Edit Entry</button>
+  `;
+  document.getElementById('btnEditFromDetails').addEventListener('click', ()=>{ openEditEntry(date); showScreen('edit-entry'); });
+}
+document.getElementById('btnPrint').addEventListener('click', ()=> window.print());
+
+/* ==============================================================
+   EDIT ENTRY
+   ============================================================== */
+function openEditEntry(date){
+  currentHistoryDate = date;
+  const e = DATA.entries[date];
+  const inherited = inheritedStateFor(date);
+  document.getElementById('editDateInput').value = date;
+  document.getElementById('editMsRate').value = e.msRate;
+  document.getElementById('editHsdRate').value = e.hsdRate;
+  document.getElementById('editMsN1Close').value = e.ms.n1.close;
+  document.getElementById('editMsN2Close').value = e.ms.n2.close;
+  document.getElementById('editHsdN1Close').value = e.hsd.n1.close;
+  document.getElementById('editHsdN2Close').value = e.hsd.n2.close;
+
+  const isFirst = inherited.isFirstEver;
+  document.getElementById('editPrevBalance').readOnly = !isFirst;
+  document.getElementById('editPrevBalance').classList.toggle('ro', !isFirst);
+  document.getElementById('editPrevBalance').value = isFirst ? (e.manualPrevBalance||0) : inherited.previousBalance;
+  const opening = isFirst ? (e.manualOpening||{msN1:0,msN2:0,hsdN1:0,hsdN2:0}) : inherited.opening;
+  ['editMsN1Open','editMsN2Open','editHsdN1Open','editHsdN2Open'].forEach(id=>{
+    document.getElementById(id).readOnly = !isFirst;
+    document.getElementById(id).classList.toggle('ro', !isFirst);
+  });
+  document.getElementById('editMsN1Open').value = opening.msN1;
+  document.getElementById('editMsN2Open').value = opening.msN2;
+  document.getElementById('editHsdN1Open').value = opening.hsdN1;
+  document.getElementById('editHsdN2Open').value = opening.hsdN2;
+
+  editKharchaDraft = JSON.parse(JSON.stringify(e.kharchas||[]));
+  document.getElementById('editKharchaName').value = '';
+  document.getElementById('editKharchaNameOtherWrap').hidden = true;
+  document.getElementById('editKharchaNameOther').value = '';
+  document.getElementById('editKharchaAmount').value = '';
+  renderEditKharchaList();
+}
+
+/* ---------- Edit Entry: Kharcha list management ---------- */
+let editKharchaDraft = [];
+function renderEditKharchaList(){
+  const list = document.getElementById('editKharchaList');
+  list.innerHTML = '';
+  let total = 0;
+  editKharchaDraft.forEach((c, idx)=>{
+    total += Number(c.amount)||0;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div><span class="kharcha-item-name">${escapeHtml(c.name)}</span><span class="kharcha-item-amt">${fmtINR(c.amount)}</span></div>
+      <div class="kharcha-actions">
+        <button type="button" class="edit" data-idx="${idx}" aria-label="Edit">✎</button>
+        <button type="button" class="del" data-idx="${idx}" aria-label="Delete">🗑</button>
+      </div>`;
+    list.appendChild(li);
+  });
+  document.getElementById('editKharchaTotalAmt').textContent = fmtINR(total);
+}
+document.getElementById('editKharchaList').addEventListener('click', (ev)=>{
+  const editBtn = ev.target.closest('.edit');
+  const delBtn = ev.target.closest('.del');
+  if(editBtn){
+    const idx = +editBtn.dataset.idx;
+    const item = editKharchaDraft[idx];
+    setKharchaSelectValue('editKharchaName', 'editKharchaNameOtherWrap', 'editKharchaNameOther', item.name);
+    document.getElementById('editKharchaAmount').value = item.amount;
+    editKharchaDraft.splice(idx,1);
+    renderEditKharchaList();
+  } else if(delBtn){
+    const idx = +delBtn.dataset.idx;
+    editKharchaDraft.splice(idx,1);
+    renderEditKharchaList();
+  }
+});
+document.getElementById('btnAddEditKharcha').addEventListener('click', ()=>{
+  const name = getKharchaNameValue('editKharchaName', 'editKharchaNameOther');
+  const amount = parseFloat(document.getElementById('editKharchaAmount').value);
+  if(!name || isNaN(amount) || amount < 0){
+    showSnackbar('Enter a valid name and amount.');
+    return;
+  }
+  editKharchaDraft.push({ name, amount });
+  document.getElementById('editKharchaName').value = '';
+  document.getElementById('editKharchaNameOtherWrap').hidden = true;
+  document.getElementById('editKharchaNameOther').value = '';
+  document.getElementById('editKharchaAmount').value = '';
+  renderEditKharchaList();
+});
+document.getElementById('editForm').addEventListener('submit', (ev)=>{
+  ev.preventDefault();
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const pairs = [['editMsN1Open','editMsN1Close'],['editMsN2Open','editMsN2Close'],['editHsdN1Open','editHsdN1Close'],['editHsdN2Open','editHsdN2Close']];
+  for(const [o,c] of pairs){
+    if(g(c) < g(o)){ showSnackbar('Closing reading cannot be less than opening reading.'); return; }
+  }
+  const oldDate = currentHistoryDate;
+  const newDate = document.getElementById('editDateInput').value;
+  if(!newDate){ showSnackbar('Please select a valid date.'); return; }
+  if(newDate !== oldDate && DATA.entries[newDate]){
+    showSnackbar('An entry already exists on ' + formatDateShort(newDate) + '. Choose a different date.');
+    return;
+  }
+  const e = DATA.entries[oldDate];
+  e.msRate = g('editMsRate');
+  e.hsdRate = g('editHsdRate');
+  e.ms.n1.close = g('editMsN1Close');
+  e.ms.n2.close = g('editMsN2Close');
+  e.hsd.n1.close = g('editHsdN1Close');
+  e.hsd.n2.close = g('editHsdN2Close');
+  const inherited = inheritedStateFor(oldDate);
+  if(inherited.isFirstEver){
+    e.manualOpening = { msN1:g('editMsN1Open'), msN2:g('editMsN2Open'), hsdN1:g('editHsdN1Open'), hsdN2:g('editHsdN2Open') };
+    e.manualPrevBalance = g('editPrevBalance');
+  }
+  e.kharchas = editKharchaDraft;
+  let date = oldDate;
+  if(newDate !== oldDate){
+    delete DATA.entries[oldDate];
+    DATA.entries[newDate] = e;
+    stampEntryDeleted(oldDate);
+    stampEntryUpdated(newDate);
+    date = newDate;
+    currentHistoryDate = newDate;
+  } else {
+    stampEntryUpdated(oldDate);
+  }
+  saveData();
+  recomputeAll();
+  showSnackbar('Entry updated ✓');
+  renderHistoryDetails(date);
+  showScreen('history-details');
+});
+document.getElementById('btnDeleteEntry').addEventListener('click', ()=>{
+  askConfirm('Delete this entry?', 'This will permanently remove the entry for ' + formatDateShort(currentHistoryDate) + '. This cannot be undone.', ()=>{
+    delete DATA.entries[currentHistoryDate];
+    stampEntryDeleted(currentHistoryDate);
+    saveData();
+    recomputeAll();
+    showSnackbar('Entry deleted');
+    renderHistory();
+    routeTo('history');
+  });
+});
+
+/* ==============================================================
+   MONTHLY REPORT
+   ============================================================== */
+function openMonthlyReport(){
+  if(!reportMonthCursor){
+    const dates = sortedDates();
+    const base = dates.length ? dates[dates.length-1] : todayISO();
+    const [y,m] = base.split('-').map(Number);
+    reportMonthCursor = { y, m };
+  }
+  renderMonthlyReport();
+}
+function renderMonthlyReport(){
+  const { y, m } = reportMonthCursor;
+  const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-IN',{ month:'long', year:'numeric' });
+  document.getElementById('reportMonthLabel').textContent = monthLabel;
+
+  const prefix = `${y}-${String(m).padStart(2,'0')}-`;
+  const monthDates = sortedDates().filter(d=>d.startsWith(prefix));
+
+  let fuel=0, kharcha=0, bal=0, litre=0;
+  const tbody = document.getElementById('reportTableBody');
+  tbody.innerHTML = '';
+  monthDates.forEach(date=>{
+    const c = computedCache[date];
+    fuel += c.totalFuelAmount; kharcha += c.totalKharcha; bal = c.totalBalance; litre += c.totalLitre;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${formatDateDDMMYYYY(date)}</td><td>${fmt2(c.msAmount)}</td><td>${fmt2(c.hsdAmount)}</td><td>${fmt2(c.totalFuelAmount)}</td><td>${fmt3(c.totalLitre)}</td>`;
+    tbody.appendChild(tr);
+  });
+  if(monthDates.length===0){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--md-on-surface-variant);">No entries this month</td></tr>`;
+  }
+  document.getElementById('repFuelSale').textContent = fmtINR(fuel);
+  document.getElementById('repKharcha').textContent = fmtINR(kharcha);
+  document.getElementById('repLitre').textContent = fmt3(litre);
+  document.getElementById('repBalance').textContent = fmtINR(bal);
+  document.getElementById('repDifference').textContent = fmtINR(fuel - kharcha);
+  document.getElementById('reportTableTotal').textContent = fmt2(fuel);
+  document.getElementById('reportTableTotalLitre').textContent = fmt3(litre);
+}
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  reportMonthCursor.m--; if(reportMonthCursor.m<1){ reportMonthCursor.m=12; reportMonthCursor.y--; }
+  renderMonthlyReport();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  reportMonthCursor.m++; if(reportMonthCursor.m>12){ reportMonthCursor.m=1; reportMonthCursor.y++; }
+  renderMonthlyReport();
+});
+document.getElementById('reportExport').addEventListener('click', exportExcel);
+
+/* ==============================================================
+   SEARCH BY DATE
+   ============================================================== */
+document.getElementById('btnSearch').addEventListener('click', ()=>{
+  const from = document.getElementById('searchFrom').value;
+  const to = document.getElementById('searchTo').value;
+  const results = sortedDates().filter(d => (!from || d>=from) && (!to || d<=to)).reverse();
+  const list = document.getElementById('searchResults');
+  list.innerHTML = '';
+  document.getElementById('searchEmpty').hidden = results.length>0;
+  results.forEach(date=>{
+    const c = computedCache[date];
+    const li = document.createElement('li');
+    li.innerHTML = `<div><div class="hl-date">${formatDateShort(date)} (${weekdayShort(date)})</div>
+      <div class="hl-sub">Fuel Sale: ${fmtINR(c.totalFuelAmount)}</div></div>
+      <div class="hl-amt">${fmtINR(c.totalBalance)}</div>`;
+    li.addEventListener('click', ()=>{ currentHistoryDate = date; renderHistoryDetails(date); showScreen('history-details'); });
+    list.appendChild(li);
+  });
+});
+
+/* ==============================================================
+   SETTINGS
+   ============================================================== */
+document.getElementById('stgBackup').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `pump-hisab-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showSnackbar('Backup file downloaded ✓');
+});
+document.getElementById('stgRestore').addEventListener('click', ()=>{
+  document.getElementById('restoreFile').click();
+});
+document.getElementById('restoreFile').addEventListener('change', (ev)=>{
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(typeof parsed !== 'object' || !parsed.entries) throw new Error('Invalid file');
+      askConfirm('Restore data?', 'This will replace all current data on this device with the contents of the backup file.', ()=>{
+        DATA = Object.assign(defaultData(), parsed);
+        saveData();
+        recomputeAll();
+        applyTheme();
+        renderDashboard();
+        showSnackbar('Data restored successfully ✓');
+        routeTo('dashboard');
+      });
+    }catch(e){
+      showSnackbar('Restore failed: invalid backup file.');
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+});
+
+function exportExcel(){
+  const dates = sortedDates();
+  if(dates.length===0){ showSnackbar('No data to export yet.'); return; }
+  let csv = 'Date,MS Rate,HSD Rate,MS Amount,HSD Amount,Total Fuel Sale,Total Kharcha,Previous Balance,Total Balance,Difference\n';
+  dates.forEach(date=>{
+    const c = computedCache[date];
+    csv += [formatDateDDMMYYYY(date), c.msRate, c.hsdRate, c.msAmount.toFixed(2), c.hsdAmount.toFixed(2),
+            c.totalFuelAmount.toFixed(2), c.totalKharcha.toFixed(2), c.previousBalance.toFixed(2), c.totalBalance.toFixed(2),
+            (c.totalFuelAmount - c.totalKharcha).toFixed(2)].join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `pump-hisab-export-${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showSnackbar('Excel (CSV) export downloaded ✓');
+}
+document.getElementById('stgExportExcel').addEventListener('click', exportExcel);
+
+document.getElementById('stgExportPdf').addEventListener('click', ()=>{
+  const dates = sortedDates();
+  if(dates.length===0){ showSnackbar('No data to export yet.'); return; }
+  const rows = dates.map(date=>{
+    const c = computedCache[date];
+    return `<tr><td>${formatDateDDMMYYYY(date)}</td><td>${fmt2(c.msAmount)}</td><td>${fmt2(c.hsdAmount)}</td><td>${fmt2(c.totalFuelAmount)}</td><td>${fmt2(c.totalKharcha)}</td><td>${fmt2(c.totalBalance)}</td><td>${fmt2(c.totalFuelAmount - c.totalKharcha)}</td></tr>`;
+  }).join('');
+  const w = window.open('', '_blank');
+  if(!w){ showSnackbar('Please allow pop-ups to export PDF.'); return; }
+  w.document.write(`
+    <html><head><title>Pump Hisab Report</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#1B1B21;}
+      h1{font-size:20px;margin-bottom:4px;} p{color:#555;margin-top:0;}
+      table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;}
+      th,td{border:1px solid #ccc;padding:8px 10px;text-align:right;}
+      th:first-child,td:first-child{text-align:left;}
+      thead{background:#EFEFF7;}
+    </style></head><body>
+    <h1>Pump Hisab — Full Report</h1>
+    <p>Generated on ${formatDateShort(todayISO())}</p>
+    <table><thead><tr><th>Date</th><th>MS Amount</th><th>HSD Amount</th><th>Total Sale</th><th>Kharcha</th><th>Balance</th><th>Difference</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 300);
+});
+
+document.getElementById('darkModeToggle').addEventListener('change', (ev)=>{
+  DATA.settings.darkMode = ev.target.checked;
+  saveData();
+  applyTheme();
+});
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', DATA.settings.darkMode ? 'dark' : 'light');
+  document.getElementById('darkModeToggle').checked = !!DATA.settings.darkMode;
+}
+
+document.getElementById('stgAbout').addEventListener('click', ()=> openModal('modalAbout'));
+document.getElementById('stgLogout').addEventListener('click', ()=>{
+  askConfirm('Log out?', 'You will need to sign in with Google or Email again to use the app.', async ()=>{
+    stopCloudListener();
+    try{ if(fbAuth) await fbAuth.signOut(); }catch(e){ console.error(e); }
+    currentUser = null;
+    updateGoogleUI();
+    lockApp();
+  });
+});
+
+/* ==============================================================
+   Google login + cloud backup — event wiring
+   ============================================================== */
+document.getElementById('btnGoogleSignIn').addEventListener('click', signInWithGoogle);
+document.getElementById('btnEmailSignIn').addEventListener('click', openEmailAuthModal);
+
+document.getElementById('stgGoogleAccount').addEventListener('click', ()=>{
+  if(currentUser){
+    askConfirm('Sign out?', 'Cloud auto-backup will stop until you sign in again.', signOutGoogle);
+  } else {
+    signInWithGoogle();
+  }
+});
+document.getElementById('stgEmailAccount').addEventListener('click', ()=>{
+  if(currentUser){
+    askConfirm('Sign out?', 'Cloud auto-backup will stop until you sign in again.', signOutGoogle);
+  } else {
+    openEmailAuthModal();
+  }
+});
+
+document.getElementById('stgCloudBackup').addEventListener('click', ()=> pushToCloud(false));
+document.getElementById('stgCloudRestore').addEventListener('click', ()=>{
+  askConfirm('Restore from Google Cloud?', 'This will overwrite the data currently on this device with your latest cloud backup.', ()=> pullFromCloud(false));
+});
+
+/* ==============================================================
+   PWA — Add to Home Screen / Install
+   ============================================================== */
+let deferredInstallPrompt = null;
+const installBanner = document.getElementById('installBanner');
+
+window.addEventListener('beforeinstallprompt', (ev) => {
+  ev.preventDefault();
+  deferredInstallPrompt = ev;
+  if(!localStorage.getItem('pumpHisabInstallDismissed')){
+    installBanner.hidden = false;
+  }
+});
+
+function triggerInstall(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then((choice) => {
+      if(choice.outcome === 'accepted') showSnackbar('App installed ✓');
+      deferredInstallPrompt = null;
+      installBanner.hidden = true;
+    });
+    return;
+  }
+  // iOS Safari (and any browser without beforeinstallprompt support)
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isIOS){
+    showSnackbar('Tap the Share icon, then "Add to Home Screen".');
+  } else {
+    showSnackbar('This browser doesn\'t support one-tap install. Use your browser menu → "Install app" / "Add to Home screen".');
+  }
+}
+
+document.getElementById('installBtn').addEventListener('click', triggerInstall);
+document.getElementById('installBannerClose').addEventListener('click', ()=>{
+  installBanner.hidden = true;
+  localStorage.setItem('pumpHisabInstallDismissed', '1');
+});
+document.getElementById('stgInstallApp').addEventListener('click', triggerInstall);
+
+window.addEventListener('appinstalled', () => {
+  installBanner.hidden = true;
+  showSnackbar('Pump Hisab installed on your device ✓');
+});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed:', e));
+  });
+}
+
+/* ==============================================================
+   Utility
+   ============================================================== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+/* ==============================================================
+   Init
+   ============================================================== */
+applyTheme();
+updateLastSyncedLabel();
+
+</script>
+</body>
+</html>
